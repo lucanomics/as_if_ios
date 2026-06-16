@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The home screen — a library of high-stakes scenarios to practice.
+/// The home screen — a training deck of high-stakes scenarios. Framed as a
+/// mission board, not a lesson list.
 struct ScenarioLibraryView: View {
     @State private var selectedCategory: Scenario.Category?
 
@@ -14,12 +15,13 @@ struct ScenarioLibraryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Theme.Color.background.ignoresSafeArea()
+                ScreenBackground()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                         header
                         categoryFilter
+                        deckHeading
                         scenarioList
                     }
                     .padding(.horizontal, Theme.Layout.screenPadding)
@@ -36,7 +38,7 @@ struct ScenarioLibraryView: View {
     // MARK: - Sections
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             HStack {
                 PillLabel(text: "Pressure Loop")
                 Spacer()
@@ -52,7 +54,7 @@ struct ScenarioLibraryView: View {
                 .lineSpacing(2)
                 .padding(.top, 4)
 
-            Text("Five situations where your English has to perform. Pick one and step into it.")
+            Text("Five rooms where your English has to perform. Step into one and respond under pressure.")
                 .font(Theme.Font.body(16))
                 .foregroundStyle(Theme.Color.textSecondary)
                 .lineSpacing(3)
@@ -76,11 +78,23 @@ struct ScenarioLibraryView: View {
         }
     }
 
+    private var deckHeading: some View {
+        HStack {
+            SectionEyebrow(text: "Training deck")
+            Spacer()
+            Text("\(filtered.count) \(filtered.count == 1 ? "room" : "rooms")")
+                .font(Theme.Font.mono(11))
+                .tracking(1.2)
+                .foregroundStyle(Theme.Color.textTertiary)
+        }
+        .padding(.top, 4)
+    }
+
     private var scenarioList: some View {
-        LazyVStack(spacing: 16) {
-            ForEach(filtered) { scenario in
+        LazyVStack(spacing: Theme.Spacing.md) {
+            ForEach(Array(filtered.enumerated()), id: \.element.id) { index, scenario in
                 NavigationLink(value: scenario) {
-                    ScenarioCard(scenario: scenario)
+                    ScenarioCard(scenario: scenario, index: index + 1)
                 }
                 .buttonStyle(.plain)
             }
@@ -119,30 +133,47 @@ private struct FilterChip: View {
 
 private struct ScenarioCard: View {
     let scenario: Scenario
+    let index: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 16) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack(alignment: .top, spacing: 14) {
                 Image(systemName: scenario.symbol)
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(Theme.Color.accent)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 50, height: 50)
                     .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: 15, style: .continuous)
                             .fill(Theme.Color.accentSoft)
                     )
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(scenario.category.rawValue.uppercased())
-                        .font(Theme.Font.mono(11))
-                        .tracking(1.2)
-                        .foregroundStyle(Theme.Color.textTertiary)
+                    HStack(spacing: 8) {
+                        Text(String(format: "%02d", index))
+                            .font(Theme.Font.mono(11))
+                            .foregroundStyle(Theme.Color.accent)
+                        Text("·")
+                            .foregroundStyle(Theme.Color.textTertiary)
+                        Text(scenario.category.rawValue.uppercased())
+                            .font(Theme.Font.mono(11))
+                            .tracking(1.2)
+                            .foregroundStyle(Theme.Color.textTertiary)
+                    }
                     Text(scenario.title)
                         .font(Theme.Font.title(21))
                         .foregroundStyle(Theme.Color.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
                 Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    PressureBars(difficulty: scenario.difficulty)
+                    Text(scenario.difficulty.label.uppercased())
+                        .font(Theme.Font.mono(9))
+                        .tracking(0.8)
+                        .foregroundStyle(scenario.difficulty.tint)
+                }
             }
 
             Text(scenario.tagline)
@@ -151,32 +182,27 @@ private struct ScenarioCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2)
 
+            Rectangle()
+                .fill(Theme.Color.stroke)
+                .frame(height: 1)
+
             HStack(spacing: 14) {
-                DifficultyTag(difficulty: scenario.difficulty)
                 Label("\(scenario.estimatedMinutes) min", systemImage: "clock")
                     .font(Theme.Font.caption(13))
                     .foregroundStyle(Theme.Color.textTertiary)
+                Label("\(scenario.prompts.count) rounds", systemImage: "arrow.triangle.2.circlepath")
+                    .font(Theme.Font.caption(13))
+                    .foregroundStyle(Theme.Color.textTertiary)
                 Spacer()
+                Text("Enter")
+                    .font(Theme.Font.caption(13))
+                    .foregroundStyle(Theme.Color.accent)
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Theme.Color.textSecondary)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.Color.accent)
             }
         }
         .cardSurface()
-    }
-}
-
-struct DifficultyTag: View {
-    let difficulty: Scenario.Difficulty
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(difficulty.tint)
-                .frame(width: 7, height: 7)
-            Text(difficulty.label)
-                .font(Theme.Font.caption(13))
-                .foregroundStyle(Theme.Color.textSecondary)
-        }
     }
 }
 

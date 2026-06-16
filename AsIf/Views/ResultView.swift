@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Mock feedback result shown after a practice session. The scores and copy are
-/// generated locally — a stand-in for real evaluation that demonstrates the
+/// The debrief shown after a session. Scores and copy are generated locally and
+/// deterministically — a stand-in for real evaluation that demonstrates the
 /// payoff at the end of the loop.
 struct ResultView: View {
     let scenario: Scenario
@@ -13,28 +13,22 @@ struct ResultView: View {
 
     var body: some View {
         ZStack {
-            Theme.Color.background.ignoresSafeArea()
-
-            RadialGradient(
-                colors: [Theme.Color.accent.opacity(0.18), .clear],
-                center: .top, startRadius: 0, endRadius: 360
-            )
-            .ignoresSafeArea()
+            ScreenBackground()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     scoreHeader
                     summaryCard
                     metricsSection
-                    listSection(title: "What worked", tint: Theme.Color.success,
+                    listSection(title: "What held", tint: Theme.Color.success,
                                 symbol: "checkmark.circle.fill", items: feedback.strengths)
-                    listSection(title: "Sharpen this", tint: Theme.Color.warning,
+                    listSection(title: "What to sharpen", tint: Theme.Color.warning,
                                 symbol: "arrow.up.right.circle.fill", items: feedback.improvements)
                     suggestedLineCard
                     disclaimer
                 }
                 .padding(.horizontal, Theme.Layout.screenPadding)
-                .padding(.top, 24)
+                .padding(.top, Theme.Spacing.lg)
                 .padding(.bottom, 130)
             }
 
@@ -50,21 +44,27 @@ struct ResultView: View {
     // MARK: - Sections
 
     private var scoreHeader: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            PillLabel(text: "Result")
-                .padding(.top, 8)
+        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+            HStack {
+                PillLabel(text: "Debrief")
+                Spacer()
+                Text(scenario.title)
+                    .font(Theme.Font.caption(13))
+                    .foregroundStyle(Theme.Color.textTertiary)
+            }
+            .padding(.top, 8)
 
             HStack(alignment: .center, spacing: 22) {
                 ZStack {
                     Circle()
-                        .stroke(Theme.Color.surface, lineWidth: 10)
+                        .stroke(Theme.Color.surface, lineWidth: 11)
                     Circle()
                         .trim(from: 0, to: animateScore ? CGFloat(feedback.overallScore) / 100 : 0)
-                        .stroke(Theme.Color.accent, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .stroke(Theme.Gradient.accent, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 0) {
                         Text("\(feedback.overallScore)")
-                            .font(Theme.Font.display(34))
+                            .font(Theme.Font.display(36))
                             .foregroundStyle(Theme.Color.textPrimary)
                             .contentTransition(.numericText())
                         Text("/ 100")
@@ -72,11 +72,12 @@ struct ResultView: View {
                             .foregroundStyle(Theme.Color.textTertiary)
                     }
                 }
-                .frame(width: 116, height: 116)
+                .frame(width: 124, height: 124)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Grade \(feedback.grade)")
                         .font(Theme.Font.mono(13))
+                        .tracking(1.0)
                         .foregroundStyle(Theme.Color.accent)
                     Text(feedback.headline)
                         .font(Theme.Font.title(22))
@@ -99,10 +100,8 @@ struct ResultView: View {
     }
 
     private var metricsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Breakdown")
-                .font(Theme.Font.headline())
-                .foregroundStyle(Theme.Color.textPrimary)
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            SectionEyebrow(text: "Response quality")
 
             VStack(spacing: 18) {
                 ForEach(feedback.metrics) { metric in
@@ -114,12 +113,10 @@ struct ResultView: View {
     }
 
     private func listSection(title: String, tint: Color, symbol: String, items: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(title)
-                .font(Theme.Font.headline())
-                .foregroundStyle(Theme.Color.textPrimary)
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            SectionEyebrow(text: title)
 
-            VStack(spacing: 12) {
+            VStack(spacing: Theme.Spacing.sm) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: symbol)
@@ -139,15 +136,12 @@ struct ResultView: View {
     }
 
     private var suggestedLineCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             HStack(spacing: 8) {
                 Image(systemName: "quote.opening")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.Color.accent)
-                Text("A sharper answer")
-                    .font(Theme.Font.mono(11))
-                    .tracking(1.4)
-                    .foregroundStyle(Theme.Color.textTertiary)
+                SectionEyebrow(text: "A sharper answer", tint: Theme.Color.accent)
             }
             Text(feedback.suggestedLine)
                 .font(Theme.Font.title(19))
@@ -161,6 +155,12 @@ struct ResultView: View {
             RoundedRectangle(cornerRadius: Theme.Layout.cardRadius, style: .continuous)
                 .fill(Theme.Color.accentSoft)
         )
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(Theme.Gradient.accent)
+                .frame(width: 3)
+                .padding(.vertical, 20)
+        }
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Layout.cardRadius, style: .continuous)
                 .stroke(Theme.Color.accent.opacity(0.3), lineWidth: 1)
@@ -168,7 +168,7 @@ struct ResultView: View {
     }
 
     private var disclaimer: some View {
-        Text("Sample feedback for this prototype. Scoring and coaching are generated on-device and don't yet analyze your actual speech.")
+        Text("Sample debrief for this prototype. Scoring and coaching are generated on-device and don't yet analyze your actual speech.")
             .font(Theme.Font.caption(12))
             .foregroundStyle(Theme.Color.textTertiary)
             .fixedSize(horizontal: false, vertical: true)
@@ -187,7 +187,7 @@ struct ResultView: View {
                 )
                 .frame(height: 28)
 
-                Button("Done", action: onDone)
+                Button("Finish debrief", action: onDone)
                     .buttonStyle(PrimaryButtonStyle())
                     .padding(.horizontal, Theme.Layout.screenPadding)
                     .padding(.bottom, 12)
@@ -219,7 +219,7 @@ private struct MetricBar: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.Color.surfaceElevated)
                     Capsule()
-                        .fill(Theme.Color.accent)
+                        .fill(Theme.Gradient.accent)
                         .frame(width: animate ? geo.size.width * CGFloat(metric.value) / 100 : 0)
                         .animation(.spring(response: 0.8, dampingFraction: 0.85), value: animate)
                 }
