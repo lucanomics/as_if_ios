@@ -91,3 +91,10 @@ AsIf/
 Premium, dark, high-stakes. Near-black surfaces, strong typography, generous
 spacing, and a single restrained blue-violet accent. No mascots, no cute
 education aesthetics, no generic chatbot UI.
+
+## Project documentation
+
+- [`AGENTS.md`](AGENTS.md) — operating rules for AI agents and contributors (scope guardrails).
+- [`PRODUCT_BRIEF.md`](PRODUCT_BRIEF.md) — what As if is, who it's for, and MVP-0 scope.
+- [`DESIGN_DIRECTION.md`](DESIGN_DIRECTION.md) — visual language and product tone.
+- [`ROADMAP.md`](ROADMAP.md) — phased direction (Phase 0 baseline → later PoCs).
