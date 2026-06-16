@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// First-run intro. Sets the high-stakes tone and explains the loop without
-/// any mascots or cute education tropes.
+/// First-run intro. Opens with a hard brand statement, then frames the loop.
+/// High-stakes and adult — no mascots, no "learn English faster" framing.
 struct OnboardingView: View {
     /// Called when the learner taps through the final page.
     let onFinish: () -> Void
@@ -10,37 +10,31 @@ struct OnboardingView: View {
 
     private let pages: [OnboardingPage] = [
         OnboardingPage(
-            eyebrow: "As if",
-            title: "Practice the conversations\nthat actually scare you.",
-            body: "Immigration desks. Police stops. ER intake. Cross-examination. The moments where your English has to hold up under real pressure.",
+            kind: .brand,
+            eyebrow: "Pressure Loop",
+            title: "Real-world English,\nunder stress.",
+            body: "As if is high-stakes conversation practice for intermediate and advanced speakers — built for the rooms where freezing isn't an option.",
             symbol: "waveform.path.ecg"
         ),
         OnboardingPage(
-            eyebrow: "The pressure loop",
-            title: "Speak. Be judged.\nSharpen. Repeat.",
-            body: "Pick a scenario, face the questions out loud, and get a direct read on how you held up — then run it again until it's automatic.",
+            kind: .standard,
+            eyebrow: "How it works",
+            title: "Enter the room.\nHold your answer.\nRespond under pressure.",
+            body: "Pick a scenario, face the questions out loud, then read a sharp debrief on how you held up. Run it again until it's automatic.",
             symbol: "arrow.triangle.2.circlepath"
         ),
         OnboardingPage(
+            kind: .standard,
             eyebrow: "No safety net",
-            title: "It feels real\nbecause it's meant to.",
-            body: "Fast questions, follow-ups, and traps — so the real thing feels like something you've already done.",
+            title: "Survive the\nconversation.",
+            body: "Fast questions, follow-ups, and traps — so the real border desk, traffic stop, or witness stand feels like something you've already done.",
             symbol: "bolt.shield"
         )
     ]
 
     var body: some View {
         ZStack {
-            Theme.Color.background.ignoresSafeArea()
-
-            // Subtle accent glow anchored to the top.
-            RadialGradient(
-                colors: [Theme.Color.accent.opacity(0.22), .clear],
-                center: .top,
-                startRadius: 0,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
+            ScreenBackground()
 
             VStack(spacing: 0) {
                 TabView(selection: $page) {
@@ -60,20 +54,22 @@ struct OnboardingView: View {
         }
     }
 
+    private var isLast: Bool { page == pages.count - 1 }
+
     private var controls: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: Theme.Spacing.lg) {
             // Page indicator
             HStack(spacing: 8) {
                 ForEach(pages.indices, id: \.self) { index in
                     Capsule()
                         .fill(index == page ? Theme.Color.accent : Theme.Color.stroke)
-                        .frame(width: index == page ? 22 : 7, height: 7)
+                        .frame(width: index == page ? 24 : 7, height: 7)
                         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: page)
                 }
             }
 
-            Button(page == pages.count - 1 ? "Start practicing" : "Continue") {
-                if page == pages.count - 1 {
+            Button(isLast ? "Enter the Pressure Loop" : "Continue") {
+                if isLast {
                     onFinish()
                 } else {
                     withAnimation { page += 1 }
@@ -81,15 +77,18 @@ struct OnboardingView: View {
             }
             .buttonStyle(PrimaryButtonStyle())
 
-            Button("Skip intro", action: onFinish)
+            Button("Skip briefing", action: onFinish)
                 .font(Theme.Font.caption())
                 .foregroundStyle(Theme.Color.textTertiary)
-                .opacity(page == pages.count - 1 ? 0 : 1)
+                .opacity(isLast ? 0 : 1)
+                .disabled(isLast)
         }
     }
 }
 
 private struct OnboardingPage {
+    enum Kind { case brand, standard }
+    let kind: Kind
     let eyebrow: String
     let title: String
     let body: String
@@ -100,23 +99,37 @@ private struct OnboardingPageView: View {
     let page: OnboardingPage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             Spacer(minLength: 0)
 
-            Image(systemName: page.symbol)
-                .font(.system(size: 52, weight: .regular))
-                .foregroundStyle(Theme.Color.accent)
-                .frame(width: 96, height: 96)
-                .background(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Theme.Color.accentSoft)
-                )
+            if page.kind == .brand {
+                // Hard brand statement.
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("AS IF")
+                        .font(.system(size: 64, weight: .heavy, design: .default))
+                        .tracking(2)
+                        .foregroundStyle(Theme.Color.textPrimary)
+                    Rectangle()
+                        .fill(Theme.Gradient.accent)
+                        .frame(width: 64, height: 4)
+                        .clipShape(Capsule())
+                }
+            } else {
+                Image(systemName: page.symbol)
+                    .font(.system(size: 50, weight: .regular))
+                    .foregroundStyle(Theme.Color.accent)
+                    .frame(width: 96, height: 96)
+                    .background(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(Theme.Color.accentSoft)
+                    )
+            }
 
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 PillLabel(text: page.eyebrow)
 
                 Text(page.title)
-                    .font(Theme.Font.display(32))
+                    .font(Theme.Font.display(33))
                     .foregroundStyle(Theme.Color.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(2)
@@ -124,7 +137,7 @@ private struct OnboardingPageView: View {
                 Text(page.body)
                     .font(Theme.Font.body(17))
                     .foregroundStyle(Theme.Color.textSecondary)
-                    .lineSpacing(4)
+                    .lineSpacing(5)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

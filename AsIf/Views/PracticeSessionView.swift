@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The core of the pressure loop: step through each prompt, record a spoken
-/// answer, then move to the mock result.
+/// The core of the pressure loop: step through each round, hold and record a
+/// spoken answer, then move to the debrief. Recording is real (AVFoundation);
+/// if the mic is unavailable the flow still completes without it.
 struct PracticeSessionView: View {
     let scenario: Scenario
 
@@ -12,6 +13,7 @@ struct PracticeSessionView: View {
     @State private var session: PracticeSession
     @State private var feedback: PracticeFeedback?
     @State private var showMicDeniedAlert = false
+    @State private var pulse = false
 
     private let prompts: [DialogueTurn]
 
@@ -23,23 +25,24 @@ struct PracticeSessionView: View {
 
     private var currentPrompt: DialogueTurn { prompts[promptIndex] }
     private var isLastPrompt: Bool { promptIndex == prompts.count - 1 }
-    private var progress: Double { Double(promptIndex) / Double(max(prompts.count, 1)) }
 
     var body: some View {
         ZStack {
-            Theme.Color.background.ignoresSafeArea()
+            // The backdrop intensifies to a red glow while recording.
+            ScreenBackground(glowColor: recorder.isRecording ? Theme.Color.danger : Theme.Color.accent)
+                .animation(.easeInOut(duration: 0.4), value: recorder.isRecording)
 
             VStack(spacing: 0) {
                 topBar
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                         promptCard
                         if let hint = currentPrompt.hint {
                             hintCard(hint)
                         }
                     }
                     .padding(.horizontal, Theme.Layout.screenPadding)
-                    .padding(.top, 28)
+                    .padding(.top, Theme.Spacing.xl)
                 }
                 recordingControls
             }
@@ -59,14 +62,14 @@ struct PracticeSessionView: View {
         .alert("Microphone access is off", isPresented: $showMicDeniedAlert) {
             Button("Continue without recording", role: .cancel) { advance(savedURL: nil) }
         } message: {
-            Text("You can still run through the prompts, but answers won't be recorded. Enable the microphone in Settings to capture your voice.")
+            Text("You can still run through the rounds, but answers won't be recorded. Enable the microphone in Settings to capture your voice.")
         }
     }
 
     // MARK: - Top bar
 
     private var topBar: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Theme.Spacing.md) {
             HStack {
                 Button {
                     if recorder.isRecording { _ = recorder.stopRecording() }
@@ -81,45 +84,58 @@ struct PracticeSessionView: View {
 
                 Spacer()
 
-                Text(scenario.title)
-                    .font(Theme.Font.caption(14))
-                    .foregroundStyle(Theme.Color.textSecondary)
+                VStack(spacing: 2) {
+                    Text("ROUND \(promptIndex + 1) / \(prompts.count)")
+                        .font(Theme.Font.mono(12))
+                        .tracking(1.4)
+                        .foregroundStyle(Theme.Color.textPrimary)
+                    Text(scenario.title)
+                        .font(Theme.Font.caption(12))
+                        .foregroundStyle(Theme.Color.textTertiary)
+                }
 
                 Spacer()
 
-                Text("\(promptIndex + 1) / \(prompts.count)")
-                    .font(Theme.Font.mono(13))
-                    .foregroundStyle(Theme.Color.textTertiary)
-                    .frame(width: 38)
+                // Balance the close button so the title stays centered.
+                Color.clear.frame(width: 38, height: 38)
             }
 
-            // Progress track
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.Color.surface)
+            // Segmented round progress.
+            HStack(spacing: 6) {
+                ForEach(prompts.indices, id: \.self) { i in
                     Capsule()
-                        .fill(Theme.Color.accent)
-                        .frame(width: max(6, geo.size.width * progress))
-                        .animation(.easeInOut(duration: 0.3), value: progress)
+                        .fill(segmentColor(for: i))
+                        .frame(height: 5)
+                        .animation(.easeInOut(duration: 0.3), value: promptIndex)
                 }
             }
-            .frame(height: 5)
         }
         .padding(.horizontal, Theme.Layout.screenPadding)
         .padding(.top, 8)
     }
 
+    private func segmentColor(for i: Int) -> Color {
+        if i < promptIndex { return Theme.Color.accent }
+        if i == promptIndex { return Theme.Color.accent.opacity(0.55) }
+        return Theme.Color.surfaceElevated
+    }
+
     // MARK: - Content
 
     private var promptCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             HStack(spacing: 10) {
-                Image(systemName: "person.fill.questionmark")
+                Image(systemName: "person.fill.viewfinder")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Theme.Color.accent)
                 Text(officialRole.uppercased())
                     .font(Theme.Font.mono(11))
                     .tracking(1.4)
+                    .foregroundStyle(Theme.Color.textTertiary)
+                Spacer()
+                Text("SAYS")
+                    .font(Theme.Font.mono(10))
+                    .tracking(1.6)
                     .foregroundStyle(Theme.Color.textTertiary)
             }
 
@@ -135,6 +151,13 @@ struct PracticeSessionView: View {
             RoundedRectangle(cornerRadius: Theme.Layout.cardRadius, style: .continuous)
                 .fill(Theme.Color.surface)
         )
+        .overlay(alignment: .leading) {
+            // Accent spine for a sharp, dossier-like edge.
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(Theme.Gradient.accent)
+                .frame(width: 3)
+                .padding(.vertical, 22)
+        }
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Layout.cardRadius, style: .continuous)
                 .stroke(Theme.Color.stroke, lineWidth: 1)
@@ -173,26 +196,26 @@ struct PracticeSessionView: View {
     // MARK: - Recording controls
 
     private var recordingControls: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: Theme.Spacing.md) {
             if recorder.isRecording {
                 liveMeter
             } else {
-                Text("When you're ready, tap to answer out loud.")
+                Text("Hold your answer, then speak it out loud.")
                     .font(Theme.Font.caption(14))
                     .foregroundStyle(Theme.Color.textTertiary)
-                    .frame(height: 44)
+                    .frame(height: 48)
             }
 
             recordButton
 
             Text(recorder.isRecording
-                 ? "Tap again to finish this answer"
-                 : (isLastPrompt ? "Last question" : "\(prompts.count - promptIndex - 1) more after this"))
+                 ? "Tap to lock in this answer"
+                 : (isLastPrompt ? "Final round" : "\(prompts.count - promptIndex - 1) rounds after this"))
                 .font(Theme.Font.caption(12))
                 .foregroundStyle(Theme.Color.textTertiary)
         }
         .padding(.horizontal, Theme.Layout.screenPadding)
-        .padding(.top, 16)
+        .padding(.top, Theme.Spacing.md)
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity)
         .background(
@@ -203,9 +226,19 @@ struct PracticeSessionView: View {
 
     private var liveMeter: some View {
         VStack(spacing: 10) {
-            Text(timeString(recorder.elapsed))
-                .font(Theme.Font.mono(15))
-                .foregroundStyle(Theme.Color.textPrimary)
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Theme.Color.danger)
+                    .frame(width: 8, height: 8)
+                    .opacity(pulse ? 0.35 : 1)
+                Text("REC")
+                    .font(Theme.Font.mono(11))
+                    .tracking(1.6)
+                    .foregroundStyle(Theme.Color.danger)
+                Text(timeString(recorder.elapsed))
+                    .font(Theme.Font.mono(15))
+                    .foregroundStyle(Theme.Color.textPrimary)
+            }
 
             HStack(spacing: 4) {
                 ForEach(0..<24, id: \.self) { i in
@@ -224,6 +257,15 @@ struct PracticeSessionView: View {
             handleRecordTap()
         } label: {
             ZStack {
+                // Pulsing halo while recording.
+                if recorder.isRecording {
+                    Circle()
+                        .stroke(Theme.Color.danger.opacity(0.5), lineWidth: 2)
+                        .frame(width: 78, height: 78)
+                        .scaleEffect(pulse ? 1.35 : 1)
+                        .opacity(pulse ? 0 : 1)
+                }
+
                 Circle()
                     .fill(recorder.isRecording ? Theme.Color.danger : Theme.Color.accent)
                     .frame(width: 78, height: 78)
@@ -242,6 +284,16 @@ struct PracticeSessionView: View {
             }
         }
         .buttonStyle(.plain)
+        .onChange(of: recorder.isRecording) { _, recording in
+            if recording {
+                pulse = false
+                withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: false)) {
+                    pulse = true
+                }
+            } else {
+                withAnimation(.default) { pulse = false }
+            }
+        }
     }
 
     // MARK: - Actions
