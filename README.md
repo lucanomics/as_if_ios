@@ -52,6 +52,17 @@ groups), targeting **iOS 17+**.
 > permission is denied, the session still runs end-to-end — recording is simply
 > skipped — so navigation never breaks.
 
+## Continuous integration
+
+GitHub Actions performs remote Xcode build verification on every pull request and
+on pushes to `main` (`.github/workflows/ios-build.yml`), compiling the **AsIf**
+scheme for an iOS Simulator on a macOS runner.
+
+- This confirms the app **compiles**, but does not run the app.
+- It does **not** verify real microphone permission behavior or recording UX.
+- **Local Xcode 16+ is still recommended** for manual simulator and microphone
+  testing.
+
 ## Project structure
 
 ```
