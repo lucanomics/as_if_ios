@@ -1,8 +1,9 @@
 import { useStore } from '../app/store'
 import { APP_NAME, APP_SUBTITLE, DEPLOY_NOTICE, FIXED_NOTICE } from '../data/constants'
 import { Banner } from './ui'
+import { AppLockPanel } from './AppLockPanel'
 
-export function DeployNotice() {
+export function DeployNotice({ onLockNow }: { onLockNow: () => void }) {
   const { loadSampleData, logs } = useStore()
 
   return (
@@ -42,12 +43,9 @@ export function DeployNotice() {
         <button className="btn-ghost" onClick={loadSampleData}>샘플 로그 추가</button>
       </section>
 
-      <Banner tone="info">{FIXED_NOTICE}</Banner>
+      <AppLockPanel onLockNow={onLockNow} />
 
-      <section className="card space-y-1 text-sm text-gray-500">
-        <h3 className="font-semibold text-ink">앱 잠금 (Phase 2 예정)</h3>
-        <p>PIN 기반 로컬 앱 잠금 및 자동 잠금은 다음 단계에서 제공될 예정입니다. PIN은 평문으로 저장하지 않습니다.</p>
-      </section>
+      <Banner tone="info">{FIXED_NOTICE}</Banner>
     </div>
   )
 }

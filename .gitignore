@@ -22,3 +22,7 @@ pnpm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 *.sw?
+
+# TS/Vite build artifacts
+*.tsbuildinfo
+vite.config.js

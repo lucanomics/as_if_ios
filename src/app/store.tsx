@@ -179,22 +179,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       persistLogs([...samples, ...logs])
     },
     wipeAll: () => {
-      void storage.wipeAllData()
-      setLogs([])
-      setAudits([])
-      setSessionState(null)
-      // 문구/매뉴얼/설정은 재시드
-      setPhrases([])
-      setManuals(SAMPLE_MANUALS)
-      void storage.saveManuals(SAMPLE_MANUALS)
       const freshSettings: AppSettings = {
         onboardingAcknowledged: settings.onboardingAcknowledged,
         retentionDays: 90,
         recentCountryCodes: [],
         recentPresetIds: [],
+        lock: settings.lock, // 잠금 설정(PIN 해시)은 초기화하지 않는다
       }
+      // 전체 삭제가 끝난 뒤에만 재시드해 삭제/쓰기 경쟁을 막는다.
+      void (async () => {
+        await storage.wipeAllData()
+        await storage.saveManuals(SAMPLE_MANUALS)
+        await storage.saveSettings(freshSettings)
+      })()
+      setLogs([])
+      setAudits([])
+      setSessionState(null)
+      setPhrases([])
+      setManuals(SAMPLE_MANUALS)
       setSettings(freshSettings)
-      void storage.saveSettings(freshSettings)
     },
   }
 

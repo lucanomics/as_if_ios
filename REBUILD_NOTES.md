@@ -78,9 +78,16 @@ backup/before-deskshield-rebuild-20260709-0559
 **원격 push를 하지 않았습니다.** 사용자의 명시적 지시 없이 push/PR 생성/실제 Vercel 배포/외부 서비스
 연결을 수행하지 않았습니다. 커밋은 로컬에만 존재합니다.
 
-## 7. 남은 리포 정리 TODO
+## 7. Phase 2 완료 및 남은 TODO
 
-- 사용자가 검토 후 원격 push 및 (원하면) PR 생성
-- Phase 2: IndexedDB 저장 드라이버, PWA, 로컬 앱 잠금(PIN)
+**Phase 2에서 추가된 것**
+- IndexedDB 저장 드라이버 + localStorage 자동 이관: `src/lib/idb.ts`, `src/lib/storage.ts`
+- 로컬 앱 잠금(PIN, 자동 잠금, PBKDF2): `src/lib/appLock.ts`, `src/components/LockScreen.tsx`,
+  `src/components/AppLockPanel.tsx`
+- PWA/오프라인: `vite-plugin-pwa`(Workbox) 구성(`vite.config.ts`), `public/icon.svg`,
+  `src/vite-env.d.ts`
+
+**남은 TODO**
 - 필요 시 백업 브랜치 정리(iOS 앱을 완전히 폐기하기로 확정되면 삭제 가능)
+- Phase 3: 로그별 체크리스트 상태 저장, 통계 차트
 - `node_modules/`, `dist/`는 `.gitignore` 처리됨(커밋 대상 아님)

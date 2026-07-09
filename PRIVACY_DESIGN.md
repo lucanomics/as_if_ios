@@ -52,10 +52,16 @@ DeskShield는 "기록을 많이 남기는 도구"가 아니라 "개인정보를 
 
 ## 7. 로컬 저장 원칙
 
-- 저장소는 `src/lib/storage.ts`의 추상화 계층을 통해 접근합니다(현재 localStorage, Phase 2에서 IndexedDB).
+- 저장소는 `src/lib/storage.ts`의 추상화 계층을 통해 접근합니다. 기본은 **IndexedDB**(`src/lib/idb.ts`)이며,
+  사용 불가 시 localStorage로 폴백합니다. 기존 localStorage 데이터는 IndexedDB로 **1회 자동 이관**되고, 이관 후
+  localStorage의 업무 데이터 사본은 제거되어 데이터가 두 곳에 남지 않습니다.
 - 수정 이력(`AuditHistory`)은 **변경된 필드명만** 기록하고 값(before/after)은 저장하지 않아, 개인정보가
   이력에 남지 않도록 했습니다.
 - 보존 기간(기본 90일)을 두고, 자동 삭제는 사용자의 명시적 확인 후에만 실행합니다.
+- **로컬 앱 잠금(PIN)**: PIN 평문을 저장하지 않고 Web Crypto PBKDF2(150k 반복, per-user salt)로 파생값만
+  저장합니다. 잠긴 동안에는 불투명 화면으로 덮어 업무 데이터가 노출되지 않습니다.
+- **PWA 서비스 워커**는 same-origin 정적 자산만 프리캐시하며, 업무 데이터(IndexedDB/localStorage)는 캐시하지
+  않고 외부(cross-origin) 요청은 가로채지 않습니다. 런타임 외부 네트워크 호출은 0건입니다.
 
 ## 8. 내보내기 파일 취급 주의사항
 

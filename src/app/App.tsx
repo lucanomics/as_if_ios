@@ -16,6 +16,7 @@ import { SearchPanel } from '../components/SearchPanel'
 import { ReconstructionMode } from '../components/ReconstructionMode'
 import { ExportPanel } from '../components/ExportPanel'
 import { DeployNotice } from '../components/DeployNotice'
+import { LockScreen } from '../components/LockScreen'
 
 type View =
   | 'dashboard'
@@ -48,6 +49,34 @@ function Shell() {
   const [quickOpen, setQuickOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [editing, setEditing] = useState<LogEntry | null>(null)
+  const [locked, setLocked] = useState(false)
+
+  const lock = store.settings.lock
+
+  // 잠금이 켜져 있으면 로드 직후 잠긴 상태로 시작
+  useEffect(() => {
+    if (store.ready && lock?.enabled) setLocked(true)
+    // 최초 준비 시 1회만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.ready])
+
+  // 자동 잠금: 미사용 타이머. 활동이 있으면 리셋한다.
+  useEffect(() => {
+    if (!lock?.enabled || locked) return
+    const minutes = lock.autoLockMinutes || 5
+    let timer: number
+    const reset = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => setLocked(true), minutes * 60_000)
+    }
+    const events: (keyof WindowEventMap)[] = ['mousedown', 'keydown', 'touchstart', 'pointerdown']
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }))
+    reset()
+    return () => {
+      window.clearTimeout(timer)
+      events.forEach((e) => window.removeEventListener(e, reset))
+    }
+  }, [lock?.enabled, lock?.autoLockMinutes, locked])
 
   // 세션 기본값으로부터 prefill 구성
   const sessionPrefill = (): Partial<LogEntry> => {
@@ -83,6 +112,11 @@ function Shell() {
 
   if (!store.ready) {
     return <div className="flex h-full items-center justify-center text-gray-400">불러오는 중…</div>
+  }
+
+  // 잠긴 상태면 다른 화면을 렌더링하지 않아 업무 데이터가 노출되지 않는다.
+  if (locked && lock?.enabled) {
+    return <LockScreen lock={lock} onUnlock={() => setLocked(false)} />
   }
 
   return (
@@ -160,7 +194,7 @@ function Shell() {
         {view === 'checklists' && <ChecklistPanel />}
         {view === 'reconstruction' && <ReconstructionMode onEdit={openEdit} />}
         {view === 'export' && <ExportPanel onEdit={openEdit} />}
-        {view === 'settings' && <DeployNotice />}
+        {view === 'settings' && <DeployNotice onLockNow={() => setLocked(true)} />}
       </main>
 
       {/* 고정 주의문 */}

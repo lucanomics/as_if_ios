@@ -8,3 +8,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
+
+// PWA 서비스 워커 등록은 vite-plugin-pwa(injectRegister: 'auto')가 처리한다.

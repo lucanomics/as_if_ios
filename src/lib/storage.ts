@@ -8,17 +8,19 @@ import type {
 } from '../types'
 import { DEFAULT_PHRASES } from '../data/phraseTemplates'
 import { computeRetentionUntil, DEFAULT_RETENTION_DAYS } from './retention'
+import { idbAvailable, idbDriver } from './idb'
 
 // ---------------------------------------------------------------------------
 // Storage abstraction.
-// MVP 구현체는 localStorage 이지만, 인터페이스는 async(Promise) 로 정의해
-// 추후 IndexedDB 드라이버로 교체할 수 있게 한다. (Phase 2)
-// 어떤 경우에도 데이터는 브라우저 로컬에만 존재하며 네트워크로 나가지 않는다.
+// Phase 2: 기본 구현체는 IndexedDB, 불가 시 localStorage 로 폴백한다.
+// 인터페이스는 async(Promise) 이며, 어떤 경우에도 데이터는 브라우저 로컬에만
+// 존재하고 네트워크로 나가지 않는다.
 // ---------------------------------------------------------------------------
 
 interface StorageDriver {
   read<T>(key: string, fallback: T): Promise<T>
   write<T>(key: string, value: T): Promise<void>
+  remove(key: string): Promise<void>
 }
 
 const localStorageDriver: StorageDriver = {
@@ -34,9 +36,10 @@ const localStorageDriver: StorageDriver = {
   async write<T>(key: string, value: T): Promise<void> {
     localStorage.setItem(key, JSON.stringify(value))
   },
+  async remove(key: string): Promise<void> {
+    localStorage.removeItem(key)
+  },
 }
-
-const driver: StorageDriver = localStorageDriver
 
 const KEYS = {
   logs: 'deskshield.logs.v1',
@@ -47,11 +50,65 @@ const KEYS = {
   settings: 'deskshield.settings.v1',
 } as const
 
+const MIGRATION_FLAG = 'deskshield.migratedToIdb.v1'
+
+// localStorage → IndexedDB 1회 마이그레이션.
+// 각 키를 IDB로 옮긴 뒤에만 localStorage에서 제거해 데이터 손실을 막는다.
+async function migrateFromLocalStorage(): Promise<void> {
+  if (typeof localStorage === 'undefined') return
+  if (localStorage.getItem(MIGRATION_FLAG)) return
+  for (const key of Object.values(KEYS)) {
+    const raw = localStorage.getItem(key)
+    if (raw == null) continue
+    try {
+      await idbDriver.write(key, JSON.parse(raw))
+      localStorage.removeItem(key) // 업무 데이터가 두 곳에 남지 않도록 정리
+    } catch {
+      // 이 키 마이그레이션 실패 시 localStorage에 남겨두고 다음 키 진행
+    }
+  }
+  localStorage.setItem(MIGRATION_FLAG, '1')
+}
+
+// 드라이버 선택은 1회만 수행하고 캐시한다.
+let driverPromise: Promise<StorageDriver> | null = null
+async function selectDriver(): Promise<StorageDriver> {
+  if (await idbAvailable()) {
+    await migrateFromLocalStorage()
+    return idbDriver
+  }
+  return localStorageDriver
+}
+function getDriver(): Promise<StorageDriver> {
+  if (!driverPromise) driverPromise = selectDriver()
+  return driverPromise
+}
+
+const driver: StorageDriver = {
+  async read<T>(key: string, fallback: T): Promise<T> {
+    return (await getDriver()).read(key, fallback)
+  },
+  async write<T>(key: string, value: T): Promise<void> {
+    return (await getDriver()).write(key, value)
+  },
+  async remove(key: string): Promise<void> {
+    return (await getDriver()).remove(key)
+  },
+}
+
+export interface LockSettings {
+  enabled: boolean
+  salt: string // base64
+  hash: string // base64 PBKDF2 파생값 (PIN 평문은 저장하지 않음)
+  autoLockMinutes: number
+}
+
 export interface AppSettings {
   onboardingAcknowledged: boolean
   retentionDays: number
   recentCountryCodes: string[]
   recentPresetIds: string[]
+  lock?: LockSettings
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -159,7 +216,11 @@ export async function saveSettings(s: AppSettings): Promise<void> {
 
 // ---- Danger: wipe everything (긴급 삭제 / 초기화) ----
 export async function wipeAllData(): Promise<void> {
-  Object.values(KEYS).forEach((k) => localStorage.removeItem(k))
+  // 활성 드라이버(IDB 또는 localStorage)와 잔여 localStorage 사본을 모두 제거한다.
+  await Promise.all(Object.values(KEYS).map((k) => driver.remove(k).catch(() => {})))
+  if (typeof localStorage !== 'undefined') {
+    Object.values(KEYS).forEach((k) => localStorage.removeItem(k))
+  }
 }
 
 // ---- One-line summary (개인정보 미포함) ----
