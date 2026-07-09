@@ -1,0 +1,182 @@
+import type {
+  LogEntry,
+  Phrase,
+  ManualEntry,
+  WorkSession,
+  AuditHistory,
+  Nationality,
+} from '../types'
+import { DEFAULT_PHRASES } from '../data/phraseTemplates'
+import { computeRetentionUntil, DEFAULT_RETENTION_DAYS } from './retention'
+
+// ---------------------------------------------------------------------------
+// Storage abstraction.
+// MVP 구현체는 localStorage 이지만, 인터페이스는 async(Promise) 로 정의해
+// 추후 IndexedDB 드라이버로 교체할 수 있게 한다. (Phase 2)
+// 어떤 경우에도 데이터는 브라우저 로컬에만 존재하며 네트워크로 나가지 않는다.
+// ---------------------------------------------------------------------------
+
+interface StorageDriver {
+  read<T>(key: string, fallback: T): Promise<T>
+  write<T>(key: string, value: T): Promise<void>
+}
+
+const localStorageDriver: StorageDriver = {
+  async read<T>(key: string, fallback: T): Promise<T> {
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw == null) return fallback
+      return JSON.parse(raw) as T
+    } catch {
+      return fallback
+    }
+  },
+  async write<T>(key: string, value: T): Promise<void> {
+    localStorage.setItem(key, JSON.stringify(value))
+  },
+}
+
+const driver: StorageDriver = localStorageDriver
+
+const KEYS = {
+  logs: 'deskshield.logs.v1',
+  phrases: 'deskshield.phrases.v1',
+  manuals: 'deskshield.manuals.v1',
+  session: 'deskshield.session.v1',
+  audits: 'deskshield.audits.v1',
+  settings: 'deskshield.settings.v1',
+} as const
+
+export interface AppSettings {
+  onboardingAcknowledged: boolean
+  retentionDays: number
+  recentCountryCodes: string[]
+  recentPresetIds: string[]
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+  onboardingAcknowledged: false,
+  retentionDays: DEFAULT_RETENTION_DAYS,
+  recentCountryCodes: [],
+  recentPresetIds: [],
+}
+
+// ---- ids / time (browser only; safe to use crypto/Date here) ----
+export function newId(prefix = 'log'): string {
+  const rand =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36)
+  return `${prefix}_${rand}`
+}
+
+export function nowISO(): string {
+  return new Date().toISOString()
+}
+
+// ---- factories ----
+export function createEmptyLog(retentionDays = DEFAULT_RETENTION_DAYS): LogEntry {
+  const created = nowISO()
+  return {
+    id: newId('log'),
+    createdAt: created,
+    updatedAt: created,
+    visaStatus: '기타',
+    nationality: { mode: 'not_recorded' },
+    caseType: '기타',
+    guidanceScope: [],
+    queueTicketType: 'not_issued',
+    nonIdentifyingKeywords: [],
+    safetyPhraseUsed: [],
+    usedPhraseIds: [],
+    usedPhraseSnapshots: [],
+    handedOffToOfficer: 'unknown',
+    riskLevel: null,
+    confidenceLevel: null,
+    reviewFlags: [],
+    memo: '',
+    privacyWarningAcknowledged: false,
+    detectedRiskKeywords: [],
+    detectedPrivacyPatterns: [],
+    detectedRiskCombinations: [],
+    retentionUntil: computeRetentionUntil(created, retentionDays),
+    isPinnedForRetention: false,
+    incomplete: false,
+  }
+}
+
+// ---- Logs ----
+export async function loadLogs(): Promise<LogEntry[]> {
+  return driver.read<LogEntry[]>(KEYS.logs, [])
+}
+export async function saveLogs(logs: LogEntry[]): Promise<void> {
+  await driver.write(KEYS.logs, logs)
+}
+
+// ---- Phrases (seed defaults on first load) ----
+export async function loadPhrases(): Promise<Phrase[]> {
+  const existing = await driver.read<Phrase[] | null>(KEYS.phrases, null)
+  if (existing && existing.length) return existing
+  await driver.write(KEYS.phrases, DEFAULT_PHRASES)
+  return DEFAULT_PHRASES
+}
+export async function savePhrases(phrases: Phrase[]): Promise<void> {
+  await driver.write(KEYS.phrases, phrases)
+}
+
+// ---- Manuals ----
+export async function loadManuals(): Promise<ManualEntry[] | null> {
+  return driver.read<ManualEntry[] | null>(KEYS.manuals, null)
+}
+export async function saveManuals(m: ManualEntry[]): Promise<void> {
+  await driver.write(KEYS.manuals, m)
+}
+
+// ---- Work session ----
+export async function loadSession(): Promise<WorkSession | null> {
+  return driver.read<WorkSession | null>(KEYS.session, null)
+}
+export async function saveSession(s: WorkSession | null): Promise<void> {
+  await driver.write(KEYS.session, s)
+}
+
+// ---- Audits ----
+export async function loadAudits(): Promise<AuditHistory[]> {
+  return driver.read<AuditHistory[]>(KEYS.audits, [])
+}
+export async function saveAudits(a: AuditHistory[]): Promise<void> {
+  await driver.write(KEYS.audits, a)
+}
+
+// ---- Settings ----
+export async function loadSettings(): Promise<AppSettings> {
+  const s = await driver.read<Partial<AppSettings>>(KEYS.settings, {})
+  return { ...DEFAULT_SETTINGS, ...s }
+}
+export async function saveSettings(s: AppSettings): Promise<void> {
+  await driver.write(KEYS.settings, s)
+}
+
+// ---- Danger: wipe everything (긴급 삭제 / 초기화) ----
+export async function wipeAllData(): Promise<void> {
+  Object.values(KEYS).forEach((k) => localStorage.removeItem(k))
+}
+
+// ---- One-line summary (개인정보 미포함) ----
+export function summarizeLog(
+  log: LogEntry,
+  labels: { queue: (v: LogEntry['queueTicketType']) => string; nationality: (n: Nationality) => string },
+): string {
+  const parts = [
+    log.visaStatus,
+    labels.nationality(log.nationality),
+    log.caseType,
+    labels.queue(log.queueTicketType) + ' 번호표',
+    log.guidanceScope[0] ?? '안내범위 미선택',
+    log.safetyPhraseUsed.length && !log.safetyPhraseUsed.includes('미사용')
+      ? '안전문구 사용'
+      : '안전문구 미사용',
+    log.riskLevel ? `리스크 ${log.riskLevel}` : '리스크 미선택',
+  ]
+  return parts.join(' / ')
+}

@@ -1,0 +1,178 @@
+import { useMemo, useState } from 'react'
+import type { WorkSession } from '../types'
+import { useStore } from '../app/store'
+import {
+  CASE_TYPES,
+  GUIDANCE_SCOPES,
+  QUEUE_TICKET_TYPES,
+  SAFETY_PHRASE_TAGS,
+  VISA_STATUSES,
+  queueLabel,
+} from '../data/constants'
+import { computeShiftReview, isToday } from '../lib/analytics'
+import { RETENTION_OPTIONS, findExpiredLogs } from '../lib/retention'
+import { Banner, Chip, ChipGroup, Field, StatCard } from './ui'
+import { NationalityPicker } from './NationalityPicker'
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+export function WorkSessionPanel() {
+  const store = useStore()
+  const { logs, session, setSession, settings, updateSettings, deleteLogs } = store
+  const [draft, setDraft] = useState<WorkSession>(
+    session ?? { date: today(), defaults: {} },
+  )
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const todayLogs = useMemo(() => logs.filter((l) => isToday(l.createdAt)), [logs])
+  const review = useMemo(() => computeShiftReview(todayLogs), [todayLogs])
+  const expiring = useMemo(() => findExpiredLogs(logs), [logs])
+
+  const setDefault = (patch: Partial<WorkSession['defaults']>) =>
+    setDraft((d) => ({ ...d, date: today(), defaults: { ...d.defaults, ...patch } }))
+
+  const save = () => setSession({ date: today(), defaults: draft.defaults })
+  const reset = () => {
+    setDraft({ date: today(), defaults: {} })
+    setSession(null)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 오늘 근무 세션 */}
+      <section className="space-y-3">
+        <h2 className="section-title">오늘 근무 세션</h2>
+        <p className="text-sm text-gray-500">
+          오늘 자주 쓰는 기본값을 설정하면 빠른 기록 모드에 자동으로 채워집니다. 다음 날에는 자동
+          초기화됩니다.
+        </p>
+        <div className="card space-y-4">
+          <Field label="오늘 기본 체류자격">
+            <ChipGroup
+              options={VISA_STATUSES}
+              value={draft.defaults.visaStatus ?? null}
+              onChange={(v) => setDefault({ visaStatus: v })}
+            />
+          </Field>
+          <Field label="오늘 기본 국적">
+            <NationalityPicker
+              value={draft.defaults.nationality ?? { mode: 'not_recorded' }}
+              onChange={(n) => setDefault({ nationality: n })}
+            />
+          </Field>
+          <Field label="오늘 기본 민원유형">
+            <ChipGroup
+              options={CASE_TYPES}
+              value={draft.defaults.caseType ?? null}
+              onChange={(v) => setDefault({ caseType: v })}
+            />
+          </Field>
+          <Field label="오늘 기본 번호표 유형">
+            <ChipGroup
+              options={QUEUE_TICKET_TYPES.map((q) => q.value)}
+              value={draft.defaults.queueTicketType ?? null}
+              onChange={(v) => setDefault({ queueTicketType: v })}
+              render={queueLabel}
+            />
+          </Field>
+          <Field label="오늘 기본 안내범위 (첫 항목만 기본 적용)">
+            <div className="flex flex-wrap gap-2">
+              {GUIDANCE_SCOPES.map((s) => (
+                <Chip
+                  key={s}
+                  active={(draft.defaults.guidanceScope ?? [])[0] === s}
+                  onClick={() => setDefault({ guidanceScope: [s] })}
+                >
+                  {s}
+                </Chip>
+              ))}
+            </div>
+          </Field>
+          <Field label="오늘 기본 안전문구">
+            <div className="flex flex-wrap gap-2">
+              {SAFETY_PHRASE_TAGS.map((t) => (
+                <Chip
+                  key={t}
+                  active={(draft.defaults.safetyPhraseUsed ?? [])[0] === t}
+                  onClick={() => setDefault({ safetyPhraseUsed: [t] })}
+                >
+                  {t}
+                </Chip>
+              ))}
+            </div>
+          </Field>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={save}>
+              오늘 기본값 저장
+            </button>
+            <button className="btn-ghost" onClick={reset}>
+              초기화
+            </button>
+          </div>
+          {session && <Banner tone="info">오늘 기본값이 적용 중입니다. (앱을 재시작해도 당일 유지)</Banner>}
+        </div>
+      </section>
+
+      {/* 퇴근 전 3분 리뷰 */}
+      <section className="space-y-3">
+        <h2 className="section-title">퇴근 전 3분 리뷰</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="오늘 총 로그" value={review.total} />
+          <StatCard label="미완성 로그" value={review.incomplete} tone={review.incomplete ? 'warn' : undefined} />
+          <StatCard label="위험 키워드 감지" value={review.riskKeyword} tone={review.riskKeyword ? 'warn' : undefined} />
+          <StatCard label="위험 조합 감지" value={review.riskCombo} tone={review.riskCombo ? 'warn' : undefined} />
+          <StatCard label="안전문구 미사용" value={review.noSafetyPhrase} tone={review.noSafetyPhrase ? 'warn' : undefined} />
+          <StatCard label="개인정보 의심" value={review.privacySuspect} tone={review.privacySuspect ? 'danger' : undefined} />
+          <StatCard label="담당자 인계 미기재" value={review.handoffMissing} tone={review.handoffMissing ? 'warn' : undefined} />
+          <StatCard label="비예약 번호표" value={review.nonReservation} />
+        </div>
+      </section>
+
+      {/* 보존 기간 관리 */}
+      <section className="space-y-3">
+        <h2 className="section-title">보존 기간 관리</h2>
+        <div className="card space-y-3">
+          <Field label="기본 보존 기간 (신규 로그에 적용)">
+            <ChipGroup
+              options={RETENTION_OPTIONS.map((d) => String(d) as `${number}`)}
+              value={String(settings.retentionDays) as `${number}`}
+              onChange={(v) => updateSettings({ retentionDays: Number(v) })}
+              render={(v) => `${v}일`}
+            />
+          </Field>
+          <p className="text-sm text-gray-500">
+            삭제 예정(보존기간 만료) 로그: <strong>{expiring.length}</strong>건. "사건성 있음" 또는 "수동
+            보존" 플래그가 있는 로그는 자동 삭제 대상에서 제외됩니다. 자동 삭제는 하지 않으며, 아래
+            버튼으로 확인 후에만 삭제됩니다.
+          </p>
+          {expiring.length > 0 &&
+            (confirmDelete ? (
+              <Banner tone="danger">
+                <div className="space-y-2">
+                  <p>만료된 {expiring.length}건을 삭제합니다. 되돌릴 수 없습니다.</p>
+                  <div className="flex gap-2">
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        deleteLogs(expiring.map((l) => l.id))
+                        setConfirmDelete(false)
+                      }}
+                    >
+                      영구 삭제
+                    </button>
+                    <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
+                      취소
+                    </button>
+                  </div>
+                </div>
+              </Banner>
+            ) : (
+              <button className="btn-ghost" onClick={() => setConfirmDelete(true)}>
+                만료 로그 정리
+              </button>
+            ))}
+        </div>
+      </section>
+    </div>
+  )
+}

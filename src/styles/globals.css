@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slatebg text-ink antialiased;
+}
+
+/* 큰 터치 타깃(모바일에서 칩 버튼을 누르기 쉽게) */
+@layer components {
+  .chip {
+    @apply inline-flex items-center rounded-full border px-3 py-2 text-sm font-medium transition
+      select-none cursor-pointer min-h-[40px];
+  }
+  .chip-off {
+    @apply border-gray-300 bg-white text-gray-700 hover:border-gray-400;
+  }
+  .chip-on {
+    @apply border-ink bg-ink text-white;
+  }
+  .card {
+    @apply rounded-2xl border border-gray-200 bg-white p-4 shadow-sm;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold
+      transition disabled:opacity-40 min-h-[44px];
+  }
+  .btn-primary {
+    @apply btn bg-ink text-white hover:bg-black;
+  }
+  .btn-ghost {
+    @apply btn border border-gray-300 bg-white text-ink hover:bg-gray-50;
+  }
+  .section-title {
+    @apply text-lg font-bold text-ink;
+  }
+  .label {
+    @apply text-xs font-semibold uppercase tracking-wide text-gray-500;
+  }
+}
