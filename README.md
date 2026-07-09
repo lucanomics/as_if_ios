@@ -1,100 +1,165 @@
-# As if — Pressure Loop (iOS MVP)
+# DeskShield
 
-**As if** is a high-stakes English conversation practice app for intermediate and
-advanced learners. It drills the moments where your English has to perform under
-real pressure — airport immigration, police stops, ER intake, courtroom
-questioning, and fast local conversations.
+**비식별 창구 안내 품질관리 도구**
 
-This repository contains the first runnable **SwiftUI MVP prototype**, codenamed
-**Pressure Loop**. It is a native iOS app — no web, no backend, no real AI yet.
+출입국관서 창구 근무 중 사용할 수 있는 개인용 안내 품질관리 도구입니다. 민원인 개인정보를 저장하지
+않고, 어떤 유형의 안내를 했는지 **비식별 방식**으로 빠르게 기록합니다. 모든 데이터는 **사용자 브라우저의
+로컬 저장소에만** 저장되며, 서버로 전송되지 않습니다.
 
-## The core loop
+> 이 도구는 공식 행정처리 기록이 아닙니다. 법률 자문 도구가 아니며, 허가 가능/불가능을 자동 판정하지
+> 않습니다. 위험한 민원 유형은 항상 "담당자 확인 필요" 또는 "담당자 인계 권장"으로 처리합니다.
 
+---
+
+## 1. 프로젝트 소개
+
+- 어떤 유형의 민원 안내를 했는지 익명으로 10초 안에 기록
+- 근무처 변경·자격외활동·기한 도과 등 **위험 키워드/조합 감지**
+- 예약 안내와 신고·허가 기한 안내를 명확히 분리
+- 표준 안전문구 사용 여부, 담당자 인계 여부, 번호표 부여 **유형(순번 아님)** 기록
+- 국적을 **업무 패턴 분석용 비식별 분류값**으로 기록
+- 퇴근 전 3분 안에 미완성·위험 로그 정리
+- 날짜·체류자격·민원유형·번호표 유형으로 업무 흐름 재구성
+
+## 2. 기존 `as_if_ios`를 DeskShield로 갈아엎은 이유
+
+이 리포지토리는 원래 "As if Pressure Loop"라는 iOS SwiftUI 앱이었습니다. 제품 방향이
+**창구 근무용 비식별 업무 품질관리 도구**로 완전히 바뀌었고, 배포 대상도 iOS에서 **Vercel 정적 웹**으로
+변경되었습니다. 기존 앱 구조·UI·문서는 더 이상 유지하지 않고 전면 교체했습니다. 자세한 내용은
+[REBUILD_NOTES.md](./REBUILD_NOTES.md)를 참고하세요.
+
+## 3. 로컬 실행 방법
+
+```bash
+npm install
+npm run dev      # 개발 서버 (http://localhost:5173)
 ```
-Scenario Library → Scenario Detail → Practice Session → Voice Recording → Mock Feedback
+
+## 4. 빌드 방법
+
+```bash
+npm run build    # 타입체크(tsc) + 정적 빌드 → dist/
+npm run preview  # 빌드 결과 로컬 미리보기 (http://localhost:4173)
+npm run lint     # ESLint
 ```
 
-1. **Library** — browse five high-stakes scenarios, filter by category.
-2. **Detail** — a briefing: the stakes, what you're judged on, how it opens.
-3. **Practice** — face each prompt out loud; tap to record your spoken answer.
-4. **Recording** — real microphone capture via AVFoundation (saved locally).
-5. **Result** — a mock scored feedback report to demonstrate the payoff.
+## 5. Vercel 배포 방법
 
-## What's real vs. mocked
+정적 프론트엔드로만 배포합니다. (서버리스 함수/DB/외부 API 없음)
 
-| Area | Status |
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **환경변수**: 필요 없음
+
+`vercel.json`에 SPA rewrite와 `noindex` 헤더가 포함되어 있습니다. 실제 배포 명령은 사용자가 직접
+실행합니다. 자세한 절차와 배포 후 점검 체크리스트는 [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md).
+
+## 6. Vercel 배포 시 주의사항
+
+- 앱이 웹에 배포되더라도 **업무기록은 각 사용자 브라우저 로컬 저장소에만** 존재합니다.
+- 브라우저 데이터를 삭제하면 기록도 사라질 수 있습니다.
+- 다른 기기에서 접속하면 데이터가 공유되지 않습니다.
+- **공용 PC에서 사용하지 마세요.**
+- 배포 URL이 공개될 수 있으므로 민원인 개인정보·내부 전산정보·실제 번호표 순번을 절대 입력하지 마세요.
+
+## 7. 개인정보 보호 원칙
+
+민원인을 식별할 수 있는 정보를 저장하지 않습니다. 모든 데이터는 브라우저 로컬에만 저장되고 서버로
+전송되지 않습니다. 저장·내보내기 전에 개인정보 의심 패턴을 스캔합니다. 상세: [PRIVACY_DESIGN.md](./PRIVACY_DESIGN.md).
+
+## 8. 저장 금지 정보
+
+이름 · 외국인등록번호 · 여권번호 · 주민등록번호 · 생년월일 · 전화번호 · 이메일 · 주소 · 회사명/학교명/
+학원명 원문 · 예약번호 전체 · 접수번호 · **실제 번호표 순번** · 서류 사진 · 전산 화면 캡처 · 직원 실명
+비난 기록 · 민원인을 특정할 수 있는 상세 서술.
+
+앱은 위 정보로 보이는 패턴(이메일·전화번호·7자리 이상 숫자·등록번호/여권번호 유사·주소·기관명·번호표
+순번 등)을 감지하면 저장 전 경고하고 기본적으로 저장을 차단합니다.
+
+## 9. 주요 기능
+
+- **빠른 기록 모드**: 필수 5개(체류자격·국적·민원유형·안내범위·번호표 유형) + 선택 입력, 칩 버튼 중심
+- **프리셋 / 오늘 근무 세션 기본값**: 반복 입력 최소화
+- **저장 전 한 줄 요약** + 저장 후 수정/복제/같은 유형 계속/나중에 보완
+- **위험 키워드 감지** · **필드 조합 위험 감지** · **개인정보 의심 패턴 감지**
+- **자동 메모 템플릿** · **안전문구 라이브러리(버전/스냅샷)** · **안전문구 자동 추천**
+- **Review Queue**(보완/확인 필요) · **퇴근 전 3분 리뷰**
+- **개인정보 청소 모드** + 긴급 삭제(오늘 로그/전체 초기화)
+- **매뉴얼 아카이브** · **체크리스트** · **사건 재구성 모드** · **검색**
+- **대시보드 통계**(소수 건수 비공개 처리)
+- **보존 기간 관리**(30/60/90/180일, 자동 삭제는 사용자 확인 후에만)
+- **JSON/CSV 내보내기 · JSON 가져오기**(내보내기 전 재스캔)
+- **수정 이력**(변경된 필드명만 기록, 값은 저장하지 않음)
+- **IndexedDB 저장**(불가 시 localStorage 폴백, 기존 localStorage 데이터 자동 이관) — *Phase 2*
+- **PWA / 오프라인 지원**(Workbox 프리캐시, 런타임 외부 요청 0건) — *Phase 2*
+- **로컬 앱 잠금(PIN)**: 자동 잠금, PBKDF2 해시로 PIN 평문 미저장 — *Phase 2*
+
+## 10. 단축키
+
+| 동작 | 단축키 |
 | --- | --- |
-| Microphone permission + recording (AVFoundation) | **Real** — records to a temporary `.m4a` file |
-| Scenario content | Local hand-written sample data (5 scenarios) |
-| Speech-to-text | **Not implemented** (intentionally) |
-| AI evaluation / scoring | **Mocked** — generated on-device, deterministic per session |
-| Backend, auth, payments, analytics | Not present |
+| 저장 (요약 확인 후) | `⌘/Ctrl + Enter` |
+| 저장 + 같은 유형 계속 | `⌘/Ctrl + Shift + Enter` |
+| 검색 열기 | `⌘/Ctrl + K` |
+| 빠른 기록 열기 | `⌘/Ctrl + N` |
+| Review Queue 열기 | `⌘/Ctrl + R` |
 
-## Scenarios
+## 11. 한계
 
-- **Airport Immigration** — Secondary Inspection
-- **Police Stop** — License and Registration
-- **ER Intake** — Describe Your Symptoms
-- **Courtroom** — Answer Under Pressure
-- **Street Talk** — Fast Local Conversation
+- 공식 행정처리 시스템이 아니며, 법적 판단/허가 여부를 자동으로 판정하지 않습니다.
+- 데이터는 단일 브라우저에만 저장됩니다(기기 간 동기화 없음, 클라우드 백업 없음).
+- 저장소는 IndexedDB(불가 시 localStorage 폴백)를 사용합니다. 브라우저 데이터 삭제 시 기록도 사라집니다.
+- PIN을 잊으면 브라우저 데이터를 초기화해야 하며, 이 경우 기록도 함께 사라집니다(복구 수단 없음).
+- 개인정보 패턴 감지는 휴리스틱이며 100%를 보장하지 않습니다 — 최종 확인은 사용자 책임입니다.
 
-## How to run
+## 12. Phase 2 완료 및 향후 TODO
 
-Requirements: **Xcode 16 or newer** (the project uses file-system-synchronized
-groups), targeting **iOS 17+**.
+**Phase 2 완료(구현됨)**
+- IndexedDB 저장 드라이버 + localStorage 자동 이관 (`src/lib/idb.ts`, `storage.ts`)
+- PWA / 오프라인 지원 (vite-plugin-pwa / Workbox, 첫 방문 이후 오프라인 동작)
+- 로컬 앱 잠금(PIN, 자동 잠금, PBKDF2 해시로 평문 미저장) (`src/lib/appLock.ts`)
 
-1. Open `AsIf.xcodeproj` in Xcode.
-2. Select the **AsIf** scheme and an iOS 17+ simulator (e.g. iPhone 15 Pro) or a
-   device.
-3. Press **Run** (⌘R).
+**향후 TODO (Phase 3)**
+- 로그별 체크리스트 상태 저장
+- 통계 시각화(차트)
+- 다중 프로파일/근무지 구분(로컬 한정)
 
-> Microphone note: the iOS Simulator can record using your Mac's microphone. If
-> permission is denied, the session still runs end-to-end — recording is simply
-> skipped — so navigation never breaks.
+## 13. 테스트 시나리오 결과
 
-## Continuous integration
+`npm run build`(성공) 및 Chromium 자동화(Playwright)로 프리뷰 빌드를 구동해 점검했습니다.
 
-GitHub Actions performs remote Xcode build verification on every pull request and
-on pushes to `main` (`.github/workflows/ios-build.yml`), compiling the **AsIf**
-scheme for an iOS Simulator on a macOS runner.
+| # | 시나리오 | 결과 |
+| --- | --- | --- |
+| 1 | E-2/미국/하이코리아 예약 로그를 빠르게 저장 | ✅ |
+| 2 | 메모의 "근무처/새 학원/이미 근무" → 위험 경고 | ✅ |
+| 3 | 전화번호/이메일 입력 → 개인정보 경고 + 저장 차단 | ✅ |
+| 4 | "저장 + 같은 유형 계속" 시 핵심 5개 값 유지 | ✅ (수동 확인) |
+| 5 | "저장 + 나중에 보완" → Review Queue 포함 | ✅ (수동 확인) |
+| 6 | 퇴근 전 3분 리뷰에 미완성/위험/안전문구 미사용 표시 | ✅ (수동 확인) |
+| 7/13 | 사건 재구성: 날짜+E-2+하이코리아+비예약 필터 | ✅ (수동 확인) |
+| 8 | 내보내기 전 개인정보 스캔 작동 | ✅ (수동 확인) |
+| 9 | 오늘 기본값 → 빠른 기록에 자동 반영 | ✅ (수동 확인) |
+| 10 | 긴급 삭제로 개인정보 의심 로그 삭제 | ✅ (수동 확인) |
+| 11 | 번호표 유형 "예약 확인/비예약" 선택 저장 | ✅ |
+| 12 | "A-103" 등 번호표 순번 → 식별 위험 경고 | ✅ |
+| 14 | 대시보드 번호표 유형별 건수 확인 | ✅ |
+| 15 | 저장 전 한 줄 요약 표시 및 수정 | ✅ |
+| 16 | 저장 후 수정/복제/같은 유형 계속/나중에 보완 | ✅ |
+| 17 | `npm run build` 성공 | ✅ |
+| 18 | Vercel 정적 배포 설정 준비 | ✅ |
+| 19 | 외부 서버로 데이터 전송 코드 없음 (정적 grep + 런타임 네트워크 0건) | ✅ |
+| 20 | 첫 실행 시 배포/개인정보 경고 표시 | ✅ |
 
-- This confirms the app **compiles**, but does not run the app.
-- It does **not** verify real microphone permission behavior or recording UX.
-- **Local Xcode 16+ is still recommended** for manual simulator and microphone
-  testing.
+**Phase 2 자동 검증** (Chromium/Playwright, 별도 스위트)
 
-## Project structure
+| 항목 | 결과 |
+| --- | --- |
+| IndexedDB에 로그 저장 · localStorage에 업무 데이터 없음 | ✅ |
+| 새로고침 후 로컬 데이터 유지 | ✅ |
+| 기존 localStorage 데이터 → IndexedDB 자동 이관(원본 정리) | ✅ |
+| 앱 잠금 설정 · 지금 잠그기 · 잘못된 PIN 거부 · 올바른 PIN 해제 | ✅ |
+| 새로고침 후 재잠금(설정 영속) · 재해제 | ✅ |
+| 서비스 워커 등록 · 매니페스트 유효 · 오프라인 재로드 동작 | ✅ |
 
-```
-AsIf/
-├── AsIfApp.swift              App entry + onboarding gate (RootView)
-├── Models/
-│   └── Models.swift           Scenario, DialogueTurn, PracticeSession, PracticeFeedback
-├── Data/
-│   ├── ScenarioData.swift     The 5 sample scenarios
-│   └── MockFeedback.swift     On-device mock evaluation engine
-├── Audio/
-│   └── AudioRecorder.swift    AVFoundation recorder (permission, start/stop, file URL)
-├── DesignSystem/
-│   └── Theme.swift            Colors, typography, reusable card/button styles
-├── Views/
-│   ├── OnboardingView.swift
-│   ├── ScenarioLibraryView.swift
-│   ├── ScenarioDetailView.swift
-│   ├── PracticeSessionView.swift
-│   └── ResultView.swift
-└── Assets.xcassets            AccentColor (blue-violet) + AppIcon
-```
-
-## Design
-
-Premium, dark, high-stakes. Near-black surfaces, strong typography, generous
-spacing, and a single restrained blue-violet accent. No mascots, no cute
-education aesthetics, no generic chatbot UI.
-
-## Project documentation
-
-- [`AGENTS.md`](AGENTS.md) — operating rules for AI agents and contributors (scope guardrails).
-- [`PRODUCT_BRIEF.md`](PRODUCT_BRIEF.md) — what As if is, who it's for, and MVP-0 scope.
-- [`DESIGN_DIRECTION.md`](DESIGN_DIRECTION.md) — visual language and product tone.
-- [`ROADMAP.md`](ROADMAP.md) — phased direction (Phase 0 baseline → later PoCs).
+Phase 1 UI 시나리오 20종 + Phase 2 9종을 브라우저 자동화로 검증했습니다(총 29종 + 이관/PWA 확인).
+자동화 스위트는 `npm run build && npm run preview` 상태에서 프리뷰 빌드를 구동해 실행했습니다.

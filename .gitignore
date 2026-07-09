@@ -1,17 +1,28 @@
-# Xcode / macOS build artifacts
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Vercel
+.vercel/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
 .DS_Store
-build/
-DerivedData/
-*.xcuserstate
-xcuserdata/
-*.xcscmblueprint
-*.xccheckout
-*.moved-aside
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.sw?
 
-# Swift Package Manager
-.swiftpm/
-.build/
-
-# CocoaPods / Carthage (not used, but ignored defensively)
-Pods/
-Carthage/Build/
+# TS/Vite build artifacts
+*.tsbuildinfo
+vite.config.js
