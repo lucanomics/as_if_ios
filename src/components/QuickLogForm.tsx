@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { LogEntry, Phrase, SafetyPhraseTag } from '../types'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { LogEntry, Phrase, SafetyPhraseTag, HandlingDurationMode } from '../types'
 import { useStore } from '../app/store'
 import {
   CASE_TYPES,
@@ -12,6 +12,8 @@ import {
   SAFETY_PHRASE_RECOMMENDATION,
   VISA_STATUSES,
   MEMO_WARNING,
+  HANDLING_DURATION_MODES,
+  formatDuration,
   queueLabel,
 } from '../data/constants'
 import { PRESETS } from '../data/presets'
@@ -58,6 +60,36 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
     if (justContinued) setJustContinued(false)
     setLog((l) => ({ ...l, ...patch }))
   }
+
+  // ---- 응대 시간 자동/수동 기재 ----
+  // 새 로그는 폼이 열린 시점부터 자동 측정 가능. 과거 로그 편집 시에는 되돌아가
+  // 재측정할 수 없으므로 자동 옵션을 숨기고 수동 입력/기록 안 함만 허용한다.
+  const [durationMode, setDurationMode] = useState<HandlingDurationMode>(() => {
+    if (!initial) return 'not_recorded'
+    // 과거 로그의 '자동 측정' 값은 재측정할 수 없으므로, 편집 시에는 그 값을 수동
+    // 입력값으로 취급해 계속 보거나 조정할 수 있게 한다.
+    return initial.handlingDurationMode === 'auto' ? 'manual' : initial.handlingDurationMode
+  })
+  const [manualMinutes, setManualMinutes] = useState(() =>
+    initial?.handlingDurationSeconds != null ? Math.floor(initial.handlingDurationSeconds / 60) : 0,
+  )
+  const [manualSeconds, setManualSeconds] = useState(() =>
+    initial?.handlingDurationSeconds != null ? initial.handlingDurationSeconds % 60 : 0,
+  )
+  const startedAtRef = useRef<number>(Date.now())
+  const [elapsedTick, setElapsedTick] = useState(0)
+  const durationOptions = initial
+    ? HANDLING_DURATION_MODES.filter((m) => m.value !== 'auto')
+    : HANDLING_DURATION_MODES
+
+  useEffect(() => {
+    if (durationMode !== 'auto') return
+    const id = window.setInterval(() => setElapsedTick((t) => t + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [durationMode])
+
+  const liveElapsedSeconds = Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000))
+  void elapsedTick // 위 setInterval이 리렌더를 트리거해 liveElapsedSeconds를 갱신시키는 용도
 
   // ---- live detection ----
   const detectedKeywords = useMemo(
@@ -166,8 +198,17 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
 
   // ---- finalize & persist ----
   function finalize(mode: 'save' | 'continue' | 'later') {
+    const handlingDurationSeconds =
+      durationMode === 'auto'
+        ? Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000))
+        : durationMode === 'manual'
+          ? manualMinutes * 60 + manualSeconds
+          : undefined
+
     const stamped: LogEntry = {
       ...log,
+      handlingDurationMode: durationMode,
+      handlingDurationSeconds,
       detectedRiskKeywords: detectedKeywords,
       detectedPrivacyPatterns: privacyHits.map((h) => h.pattern),
       detectedRiskCombinations: combos.map((c) => c.code),
@@ -198,6 +239,11 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
       setKeywordInput('')
       setMemoOpen(false)
       setJustContinued(true)
+      // 다음 로그를 위해 응대 시간 타이머를 리셋한다(기재 방식 선호는 유지).
+      startedAtRef.current = Date.now()
+      setElapsedTick(0)
+      setManualMinutes(0)
+      setManualSeconds(0)
       return
     }
     setSavedToast(stamped)
@@ -469,6 +515,48 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
           onChange={(v) => set({ handedOffToOfficer: v })}
           render={(v) => (v === 'true' ? '인계함' : v === 'false' ? '인계 안 함' : '미기재')}
         />
+      </Field>
+
+      <Field label="응대 시간" hint="실제 사건 시각이 아닌 소요 시간(분/초)만 기록합니다">
+        <ChipGroup
+          options={durationOptions.map((m) => m.value)}
+          value={durationMode}
+          onChange={(v) => setDurationMode(v)}
+          render={(v) => durationOptions.find((m) => m.value === v)?.label ?? v}
+        />
+        {durationMode === 'auto' && (
+          <p className="mt-2 text-sm text-gray-500">
+            경과 시간: <span className="font-semibold text-ink">{formatDuration(liveElapsedSeconds)}</span>
+            {' '}(저장 시 자동 기록됩니다)
+          </p>
+        )}
+        {durationMode === 'manual' && (
+          <div className="mt-2 flex items-center gap-2 text-sm">
+            <input
+              type="number"
+              min={0}
+              max={180}
+              value={manualMinutes}
+              onChange={(e) => setManualMinutes(Math.max(0, Math.min(180, Number(e.target.value) || 0)))}
+              className="w-16 rounded-xl border border-gray-300 px-2 py-1.5 text-center"
+            />
+            <span className="text-gray-500">분</span>
+            <input
+              type="number"
+              min={0}
+              max={59}
+              value={manualSeconds}
+              onChange={(e) => setManualSeconds(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
+              className="w-16 rounded-xl border border-gray-300 px-2 py-1.5 text-center"
+            />
+            <span className="text-gray-500">초</span>
+          </div>
+        )}
+        {initial?.handlingDurationMode === 'auto' && initial.handlingDurationSeconds != null && (
+          <p className="mt-1 text-xs text-gray-400">
+            최초 자동 측정값: {formatDuration(initial.handlingDurationSeconds)} (수정 시 수동 입력으로 전환됩니다)
+          </p>
+        )}
       </Field>
 
       <Field label="리스크 수준">

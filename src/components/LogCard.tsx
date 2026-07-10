@@ -1,5 +1,5 @@
 import type { LogEntry } from '../types'
-import { queueLabel, riskColorClass } from '../data/constants'
+import { formatDuration, queueLabel, riskColorClass } from '../data/constants'
 import { summarizeLog } from '../lib/storage'
 import { nationalityLabel } from './NationalityPicker'
 
@@ -28,6 +28,12 @@ export function LogCard({
               </span>
             )}
             <span className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleString('ko-KR')}</span>
+            {log.handlingDurationMode !== 'not_recorded' && log.handlingDurationSeconds != null && (
+              <span className="text-xs text-gray-400">
+                응대 {formatDuration(log.handlingDurationSeconds)}
+                {log.handlingDurationMode === 'auto' ? ' (자동)' : ' (수동)'}
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-sm font-medium text-ink">
             {summarizeLog(log, { queue: queueLabel, nationality: nationalityLabel })}

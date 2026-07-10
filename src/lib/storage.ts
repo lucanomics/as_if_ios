@@ -159,6 +159,8 @@ export function createEmptyLog(retentionDays = DEFAULT_RETENTION_DAYS): LogEntry
     retentionUntil: computeRetentionUntil(created, retentionDays),
     isPinnedForRetention: false,
     incomplete: false,
+    handlingDurationMode: 'not_recorded',
+    handlingDurationSeconds: undefined,
   }
 }
 

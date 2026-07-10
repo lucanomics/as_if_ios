@@ -7,6 +7,7 @@ import type {
   RiskLevel,
   ConfidenceLevel,
   ReviewFlag,
+  HandlingDurationMode,
 } from '../types'
 
 export const APP_NAME = 'DeskShield'
@@ -112,6 +113,25 @@ export const SAFETY_PHRASE_RECOMMENDATION: Partial<Record<CaseType, SafetyPhrase
   '자격외활동/취업허가': '허가 전 활동 금지 안내',
   '사범/범칙금 가능성': '담당자 확인 안내',
   '체류지 변경': '예약과 신고기한 별도 안내',
+}
+
+// 응대 시간 기재 방식
+export const HANDLING_DURATION_MODES: { value: HandlingDurationMode; label: string }[] = [
+  { value: 'auto', label: '자동 측정' },
+  { value: 'manual', label: '수동 입력' },
+  { value: 'not_recorded', label: '기록 안 함' },
+]
+
+export function handlingDurationModeLabel(mode: HandlingDurationMode): string {
+  return HANDLING_DURATION_MODES.find((m) => m.value === mode)?.label ?? mode
+}
+
+export function formatDuration(seconds?: number): string {
+  if (seconds == null || seconds < 0) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  if (m <= 0) return `${s}초`
+  return `${m}분 ${s}초`
 }
 
 export function riskColorClass(level: RiskLevel | null): string {
