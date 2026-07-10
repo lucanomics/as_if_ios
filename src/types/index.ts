@@ -91,6 +91,10 @@ export type ReviewFlag =
 
 export type HandedOff = 'true' | 'false' | 'unknown'
 
+// 응대 시간: 타이머로 자동 측정하거나 직접 입력한다. 실제 접수/사건 시각이 아니라
+// 소요 시간(초)만 저장하므로 그 자체로는 민원인을 식별하지 않는다.
+export type HandlingDurationMode = 'auto' | 'manual' | 'not_recorded'
+
 export interface UsedPhraseSnapshot {
   phraseId: string
   version: number
@@ -123,6 +127,8 @@ export interface LogEntry {
   retentionUntil?: string // ISO
   isPinnedForRetention: boolean
   incomplete: boolean // "나중에 보완"으로 저장된 미완성 로그
+  handlingDurationMode: HandlingDurationMode
+  handlingDurationSeconds?: number
 }
 
 export interface Phrase {

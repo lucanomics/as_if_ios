@@ -45,6 +45,8 @@ const CSV_HEADERS = [
   'confidenceLevel',
   'reviewFlags',
   'incomplete',
+  'handlingDurationMode',
+  'handlingDurationSeconds',
   'keywords',
   'memo',
 ]
@@ -71,6 +73,8 @@ export function toCSV(logs: LogEntry[]): string {
       l.confidenceLevel ?? '',
       l.reviewFlags.join('|'),
       String(l.incomplete),
+      l.handlingDurationMode,
+      l.handlingDurationSeconds ?? '',
       l.nonIdentifyingKeywords.join('|'),
       l.memo,
     ]
