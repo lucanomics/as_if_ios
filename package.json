@@ -1,9 +1,9 @@
 {
-  "name": "deskshield",
+  "name": "desksht",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "DeskShield - 비식별 창구 안내 품질관리 도구 (local-only, static)",
+  "description": "Desksht - 비식별 창구 안내 품질관리 도구 (local-only, static)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
@@ -11,6 +11,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

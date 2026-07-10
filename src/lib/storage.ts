@@ -143,6 +143,7 @@ export function createEmptyLog(retentionDays = DEFAULT_RETENTION_DAYS): LogEntry
     caseType: '기타',
     guidanceScope: [],
     queueTicketType: 'not_issued',
+    counterReferral: { mode: 'not_referred' },
     nonIdentifyingKeywords: [],
     safetyPhraseUsed: [],
     usedPhraseIds: [],
@@ -228,11 +229,19 @@ export function summarizeLog(
   log: LogEntry,
   labels: { queue: (v: LogEntry['queueTicketType']) => string; nationality: (n: Nationality) => string },
 ): string {
+  const counter = log.counterReferral ?? { mode: 'not_referred' as const }
+  const counterPart =
+    counter.mode === 'referred'
+      ? counter.counterLabel ?? (counter.counterNumber ? `${counter.counterNumber}번 창구` : '창구 안내')
+      : counter.mode === 'unknown'
+        ? '창구 기억 안 남'
+        : '창구 안내 없음'
   const parts = [
     log.visaStatus,
     labels.nationality(log.nationality),
     log.caseType,
     labels.queue(log.queueTicketType) + ' 번호표',
+    counterPart,
     log.guidanceScope[0] ?? '안내범위 미선택',
     log.safetyPhraseUsed.length && !log.safetyPhraseUsed.includes('미사용')
       ? '안전문구 사용'

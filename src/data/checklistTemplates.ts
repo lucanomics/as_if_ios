@@ -32,7 +32,7 @@ export const CHECKLISTS: ChecklistTemplate[] = [
   {
     id: 'chk-hikorea',
     title: '하이코리아 계정 분실/예약 문제 체크리스트',
-    appliesTo: '하이코리아 예약',
+    appliesTo: '전자민원/하이코리아 계정',
     items: [
       '계정 찾기 또는 재가입 안내 가능 여부',
       '대리 예약 또는 고용주 예약 가능성 안내 시, 앱에 외국인 인적사항 기재 금지',

@@ -5,12 +5,16 @@ import type { CaseType } from '../types'
 
 export function suggestMemo(caseType: CaseType, keywords: string[]): string | null {
   const kw = keywords.join(' ')
+  const hikoreaCase = caseType === '전자민원/하이코리아 계정' || caseType === '방문예약/예약 문제'
 
-  if (caseType === '하이코리아 예약' && /계정|분실|비밀번호|로그인/.test(kw)) {
+  if (hikoreaCase && /계정|분실|비밀번호|로그인/.test(kw)) {
     return '하이코리아 계정 문제로 방문예약 방법을 안내함. 예약과 체류기간·신고·허가 기한은 별도일 수 있음을 안내함.'
   }
-  if (caseType === '하이코리아 예약') {
+  if (caseType === '방문예약/예약 문제') {
     return '하이코리아 방문예약 방법을 안내함. 예약과 신고·허가 기한은 별도일 수 있음을 안내함.'
+  }
+  if (caseType === '전자민원/하이코리아 계정') {
+    return '하이코리아 계정 또는 전자민원 이용 방법을 안내함. 예약과 신고·허가 기한은 별도일 수 있음을 안내함.'
   }
   if (caseType === '체류기간 연장') {
     return '체류기간 연장 관련 방문예약 및 필요 서류 확인을 안내함. 근무처 변경/자격외활동 등 별도 신고·허가 사항은 담당자 확인이 필요할 수 있음을 안내함.'

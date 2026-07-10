@@ -7,6 +7,17 @@ import { Banner, Field } from './ui'
 
 type TriState = 'any' | 'yes' | 'no'
 
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))]
+}
+
+function counterFilterLabel(log: LogEntry): string {
+  const counter = log.counterReferral
+  if (!counter || counter.mode === 'not_referred') return '창구 안내 없음'
+  if (counter.mode === 'unknown') return '창구 기억 안 남'
+  return counter.counterLabel ?? (counter.counterNumber ? `${counter.counterNumber}번 창구` : '창구 안내')
+}
+
 export function ReconstructionMode({ onEdit }: { onEdit: (l: LogEntry) => void }) {
   const { logs } = useStore()
   const [from, setFrom] = useState('')
@@ -14,6 +25,7 @@ export function ReconstructionMode({ onEdit }: { onEdit: (l: LogEntry) => void }
   const [visa, setVisa] = useState('any')
   const [caseType, setCaseType] = useState('any')
   const [queue, setQueue] = useState('any')
+  const [counter, setCounter] = useState('any')
   const [risk, setRisk] = useState('any')
   const [riskKeyword, setRiskKeyword] = useState<TriState>('any')
   const [riskCombo, setRiskCombo] = useState<TriState>('any')
@@ -29,6 +41,7 @@ export function ReconstructionMode({ onEdit }: { onEdit: (l: LogEntry) => void }
         if (visa !== 'any' && l.visaStatus !== visa) return false
         if (caseType !== 'any' && l.caseType !== caseType) return false
         if (queue !== 'any' && l.queueTicketType !== queue) return false
+        if (counter !== 'any' && counterFilterLabel(l) !== counter) return false
         if (risk !== 'any' && l.riskLevel !== risk) return false
         if (handoff !== 'any' && l.handedOffToOfficer !== handoff) return false
         const hasKw = l.detectedRiskKeywords.length > 0
@@ -43,7 +56,15 @@ export function ReconstructionMode({ onEdit }: { onEdit: (l: LogEntry) => void }
         return true
       })
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-  }, [logs, from, to, visa, caseType, queue, risk, handoff, riskKeyword, riskCombo, phrase])
+  }, [logs, from, to, visa, caseType, queue, counter, risk, handoff, riskKeyword, riskCombo, phrase])
+
+  const visaOptions = useMemo(() => unique([...VISA_STATUSES, ...logs.map((l) => l.visaStatus)]), [logs])
+  const caseOptions = useMemo(() => unique([...CASE_TYPES, ...logs.map((l) => l.caseType)]), [logs])
+  const queueOptions = useMemo(
+    () => unique([...QUEUE_TICKET_TYPES.map((q) => q.value), ...logs.map((l) => l.queueTicketType)]),
+    [logs],
+  )
+  const counterOptions = useMemo(() => unique(logs.map(counterFilterLabel)), [logs])
 
   const summary = useMemo(() => {
     const n = filtered.length
@@ -72,19 +93,25 @@ export function ReconstructionMode({ onEdit }: { onEdit: (l: LogEntry) => void }
         <Field label="체류자격">
           <select className={sel} value={visa} onChange={(e) => setVisa(e.target.value)}>
             <option value="any">전체</option>
-            {VISA_STATUSES.map((v) => <option key={v} value={v}>{v}</option>)}
+            {visaOptions.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
         </Field>
         <Field label="민원유형">
           <select className={sel} value={caseType} onChange={(e) => setCaseType(e.target.value)}>
             <option value="any">전체</option>
-            {CASE_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {caseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
         <Field label="번호표 유형">
           <select className={sel} value={queue} onChange={(e) => setQueue(e.target.value)}>
             <option value="any">전체</option>
-            {QUEUE_TICKET_TYPES.map((q) => <option key={q.value} value={q.value}>{queueLabel(q.value)}</option>)}
+            {queueOptions.map((q) => <option key={q} value={q}>{queueLabel(q)}</option>)}
+          </select>
+        </Field>
+        <Field label="창구 안내">
+          <select className={sel} value={counter} onChange={(e) => setCounter(e.target.value)}>
+            <option value="any">전체</option>
+            {counterOptions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
         <Field label="리스크 수준">

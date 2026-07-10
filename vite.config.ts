@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// DeskShield is a purely static SPA. No proxy, no env-based API endpoints,
+// Desksht is a purely static SPA. No proxy, no env-based API endpoints,
 // no server. `base: '/'` keeps it deployable at a Vercel domain root.
 //
 // PWA (Phase 2): Workbox precaches the built asset list so the app works
@@ -16,8 +16,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'DeskShield — 비식별 창구 안내 품질관리',
-        short_name: 'DeskShield',
+        name: 'Desksht — 비식별 창구 안내 품질관리',
+        short_name: 'Desksht',
         description: '비식별 창구 안내 품질관리 도구. 모든 기록은 브라우저 로컬에만 저장됩니다.',
         lang: 'ko',
         start_url: '/',

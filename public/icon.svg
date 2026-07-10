@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="DeskShield">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Desksht">
   <rect width="512" height="512" rx="96" fill="#1f2933"/>
   <path d="M256 96 L400 152 V264 C400 352 336 400 256 432 C176 400 112 352 112 264 V152 Z"
         fill="none" stroke="#ffffff" stroke-width="26" stroke-linejoin="round"/>

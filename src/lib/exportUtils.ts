@@ -24,7 +24,7 @@ export function scanBeforeExport(logs: LogEntry[]): ExportScanResult {
 
 export function toJSON(logs: LogEntry[]): string {
   return JSON.stringify(
-    { app: 'DeskShield', kind: 'log-backup', version: 1, exportedFields: 'non-identifying-only', logs },
+    { app: 'Desksht', kind: 'log-backup', version: 1, exportedFields: 'non-identifying-only', logs },
     null,
     2,
   )
@@ -39,6 +39,9 @@ const CSV_HEADERS = [
   'caseType',
   'guidanceScope',
   'queueTicketType',
+  'counterReferralMode',
+  'counterNumber',
+  'counterLabel',
   'safetyPhraseUsed',
   'handedOffToOfficer',
   'riskLevel',
@@ -65,6 +68,9 @@ export function toCSV(logs: LogEntry[]): string {
       l.caseType,
       l.guidanceScope.join('|'),
       queueLabel(l.queueTicketType),
+      l.counterReferral?.mode ?? 'not_referred',
+      l.counterReferral?.counterNumber ?? '',
+      l.counterReferral?.counterLabel ?? '',
       l.safetyPhraseUsed.join('|'),
       l.handedOffToOfficer,
       l.riskLevel ?? '',
@@ -97,5 +103,5 @@ export function parseImportedJSON(text: string): LogEntry[] {
   const data = JSON.parse(text)
   if (Array.isArray(data)) return data as LogEntry[]
   if (data && Array.isArray(data.logs)) return data.logs as LogEntry[]
-  throw new Error('DeskShield 백업 형식이 아닙니다.')
+  throw new Error('Desksht 백업 형식이 아닙니다.')
 }

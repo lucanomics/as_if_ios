@@ -1,16 +1,9 @@
-// DeskShield data models.
+// Desksht data models.
 // 원칙: 민원인을 식별할 수 있는 어떤 값도 이 모델에 저장하지 않는다.
 // 모든 값은 비식별 분류값 또는 자유 메모(개인정보 스캔 대상)이다.
 
-export type VisaStatus =
-  | 'E-2'
-  | 'E-7'
-  | 'D-2'
-  | 'D-4'
-  | 'F-4'
-  | 'F-6'
-  | 'H-2'
-  | '기타'
+// 출입국 현장에서는 예외/세부 체류자격이 많으므로 추천값 외 직접 입력을 허용한다.
+export type VisaStatus = string
 
 // 국적: 민원인 식별 목적이 아니라 업무 패턴 분석용 비식별 분류값
 export type NationalityMode =
@@ -27,43 +20,24 @@ export interface Nationality {
   countryNameKo?: string
 }
 
-export type CaseType =
-  | '체류기간 연장'
-  | '외국인등록'
-  | '근무처 변경/추가'
-  | '자격외활동/취업허가'
-  | '체류지 변경'
-  | '하이코리아 예약'
-  | '사범/범칙금 가능성'
-  | '기타'
+export type CaseType = string
 
-export type GuidanceScope =
-  | '단순 위치/번호표 안내'
-  | '방문예약 방법 안내'
-  | '하이코리아 계정/예약 문제 안내'
-  | '서류 일반 안내'
-  | '체류기간 만료 관련 일반 안내'
-  | '신고·허가 기한 관련 일반 주의 안내'
-  | '법적 판단은 담당자 확인 안내'
-  | '담당자에게 직접 인계'
-  | '1345 안내'
-  | '접수 불가 또는 재방문 안내'
-  | '민원인이 주장한 내용만 청취'
-  | '기타'
+export type GuidanceScope = string
 
 // 번호표 부여 유형 — 실제 순번/호출번호는 저장하지 않는다. 유형만 저장.
-export type QueueTicketType =
-  | 'not_issued' // 미부여
+export type QueueTicketType = string
+
+// 창구 안내 기록 — 실제 대기순번이 아니라 안내한 창구 번호/라벨만 저장한다.
+export type CounterReferralMode =
+  | 'not_referred' // 창구로 보내지 않음
+  | 'referred' // 창구로 안내함
   | 'unknown' // 기억 안 남
-  | 'non_reservation' // 비예약
-  | 'reservation_confirmed' // 예약 확인 후 부여
-  | 'visa' // 사증
-  | 'counter_8' // 8번
-  | 'counter_7' // 7번
-  | 'nationality' // 국적
-  | 'general_information' // 일반 안내
-  | 'officer_handoff' // 담당자 인계
-  | 'other' // 기타
+
+export interface CounterReferral {
+  mode: CounterReferralMode
+  counterNumber?: string
+  counterLabel?: string
+}
 
 export type SafetyPhraseTag =
   | '예약과 신고기한 별도 안내'
@@ -107,6 +81,7 @@ export interface LogEntry {
   caseType: CaseType
   guidanceScope: GuidanceScope[]
   queueTicketType: QueueTicketType
+  counterReferral: CounterReferral
   nonIdentifyingKeywords: string[]
   safetyPhraseUsed: SafetyPhraseTag[]
   usedPhraseIds: string[]
@@ -155,6 +130,7 @@ export interface WorkSession {
     nationality?: Nationality
     caseType?: CaseType
     queueTicketType?: QueueTicketType
+    counterReferral?: CounterReferral
     guidanceScope?: GuidanceScope[]
     safetyPhraseUsed?: SafetyPhraseTag[]
   }
@@ -178,6 +154,7 @@ export interface Preset {
       | 'nationality'
       | 'caseType'
       | 'queueTicketType'
+      | 'counterReferral'
       | 'guidanceScope'
       | 'safetyPhraseUsed'
       | 'riskLevel'
