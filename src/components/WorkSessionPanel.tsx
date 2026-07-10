@@ -3,12 +3,15 @@ import type { WorkSession } from '../types'
 import { useStore } from '../app/store'
 import {
   CASE_TYPES,
+  COUNTER_SUGGESTIONS,
   COMMON_VISA_STATUSES,
   GUIDANCE_SCOPES,
   QUEUE_TICKET_TYPES,
   SAFETY_PHRASE_TAGS,
   VISA_STATUSES,
+  VISIT_STATUSES,
   queueLabel,
+  visitStatusLabel,
 } from '../data/constants'
 import { computeShiftReview, isToday } from '../lib/analytics'
 import { RETENTION_OPTIONS, findExpiredLogs } from '../lib/retention'
@@ -118,6 +121,28 @@ export function WorkSessionPanel() {
             <CounterReferralControl
               value={draft.defaults.counterReferral}
               onChange={(counterReferral) => setDefault({ counterReferral })}
+            />
+          </Field>
+          <Field label="오늘 기본 응대 창구/담당자">
+            <CounterReferralControl
+              value={draft.defaults.handlingCounter}
+              onChange={(handlingCounter) => setDefault({ handlingCounter })}
+              suggestions={COUNTER_SUGGESTIONS}
+              modeLabels={{
+                not_referred: '응대 미기재',
+                referred: '응대/부탁 기록',
+                unknown: '기억 안 남',
+              }}
+              placeholder="기본 응대 창구/담당자"
+              buttonLabel="응대 입력"
+            />
+          </Field>
+          <Field label="오늘 기본 현황">
+            <ChipGroup
+              options={VISIT_STATUSES.map((status) => status.value)}
+              value={draft.defaults.visitStatus ?? null}
+              onChange={(visitStatus) => setDefault({ visitStatus })}
+              render={visitStatusLabel}
             />
           </Field>
           <Field label="오늘 기본 안내범위 (첫 항목만 기본 적용)">

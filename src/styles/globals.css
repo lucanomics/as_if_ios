@@ -356,6 +356,34 @@ select {
   .check-preview li.is-warn {
     @apply border-risk-caution/30 bg-risk-caution/5 text-risk-caution;
   }
+
+  .live-list {
+    @apply mt-3 space-y-2;
+  }
+
+  .live-list li {
+    @apply rounded-lg border border-line bg-white p-3 text-sm;
+  }
+
+  .live-list li > div {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .live-list strong {
+    @apply text-ink;
+  }
+
+  .live-list span {
+    @apply rounded-md bg-accent-soft px-2 py-1 text-xs font-bold text-accent-strong;
+  }
+
+  .live-list p {
+    @apply mt-2 font-semibold text-ink;
+  }
+
+  .live-list small {
+    @apply mt-1 block leading-5 text-muted;
+  }
 }
 
 @media (max-width: 640px) {

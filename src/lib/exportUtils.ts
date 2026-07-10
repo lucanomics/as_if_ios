@@ -1,6 +1,6 @@
 import type { LogEntry } from '../types'
 import { scanEntryTexts, type PrivacyHit } from './privacyGuard'
-import { queueLabel } from '../data/constants'
+import { queueLabel, visitStatusLabel } from '../data/constants'
 
 // 로컬 백업 전용 내보내기. 파일은 사용자의 기기에만 생성되며 어디로도 전송되지 않는다.
 
@@ -16,15 +16,32 @@ export interface ExportScanResult {
 export function scanBeforeExport(logs: LogEntry[]): ExportScanResult {
   const offending: { log: LogEntry; hits: PrivacyHit[] }[] = []
   for (const log of logs) {
-    const hits = scanEntryTexts(log.memo, log.nonIdentifyingKeywords)
+    const hits = scanEntryTexts(log.memo, log.nonIdentifyingKeywords, [log.reservationRef?.value ?? ''])
     if (hits.length) offending.push({ log, hits })
   }
   return { clean: offending.length === 0, offending }
 }
 
+function redactOperationalRefs(log: LogEntry): LogEntry {
+  return {
+    ...log,
+    reservationRef:
+      log.reservationRef?.value && log.reservationRef.mode !== 'none'
+        ? { ...log.reservationRef, value: '[redacted]' }
+        : (log.reservationRef ?? { mode: 'none' }),
+  }
+}
+
 export function toJSON(logs: LogEntry[]): string {
   return JSON.stringify(
-    { app: 'Desksht', kind: 'log-backup', version: 1, exportedFields: 'non-identifying-only', logs },
+    {
+      app: 'Desksht',
+      kind: 'log-backup',
+      version: 2,
+      exportedFields: 'non-identifying-only',
+      redactedFields: ['reservationRef.value'],
+      logs: logs.map(redactOperationalRefs),
+    },
     null,
     2,
   )
@@ -42,6 +59,12 @@ const CSV_HEADERS = [
   'counterReferralMode',
   'counterNumber',
   'counterLabel',
+  'handlingCounterMode',
+  'handlingCounterNumber',
+  'handlingCounterLabel',
+  'visitStatus',
+  'reservationRefMode',
+  'reservationRefValue',
   'safetyPhraseUsed',
   'handedOffToOfficer',
   'riskLevel',
@@ -71,6 +94,12 @@ export function toCSV(logs: LogEntry[]): string {
       l.counterReferral?.mode ?? 'not_referred',
       l.counterReferral?.counterNumber ?? '',
       l.counterReferral?.counterLabel ?? '',
+      l.handlingCounter?.mode ?? 'not_referred',
+      l.handlingCounter?.counterNumber ?? '',
+      l.handlingCounter?.counterLabel ?? '',
+      l.visitStatus ? visitStatusLabel(l.visitStatus) : '',
+      l.reservationRef?.mode ?? 'none',
+      l.reservationRef?.value ? '[redacted]' : '',
       l.safetyPhraseUsed.join('|'),
       l.handedOffToOfficer,
       l.riskLevel ?? '',

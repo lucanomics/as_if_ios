@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import { ClipboardCheck, Clock3, Eraser, FilePlus2, RotateCw } from 'lucide-react'
 import { useStore } from '../app/store'
-import { CASE_TYPES, QUEUE_TICKET_TYPES, queueLabel } from '../data/constants'
+import { ACTIVE_VISIT_STATUSES, CASE_TYPES, QUEUE_TICKET_TYPES, queueLabel, visitStatusLabel } from '../data/constants'
 import { computeShiftReview, countBy, isThisWeek, isToday, maskSmallCount, needsReview } from '../lib/analytics'
 import { findExpiredLogs } from '../lib/retention'
 import { QuickCapturePanel } from './QuickCapturePanel'
+import { counterReferralLabel, reservationRefLabel } from './LogFieldControls'
 
 interface DashboardProps {
   onOpenQuickLog: () => void
@@ -60,6 +61,14 @@ export function Dashboard({ onOpenQuickLog, onOpenReview, onOpenSession, onOpenP
   const expiring = useMemo(() => findExpiredLogs(logs).length, [logs])
   const caseCounts = useMemo(() => countBy(todayLogs, (log) => log.caseType), [todayLogs])
   const queueCounts = useMemo(() => countBy(todayLogs, (log) => log.queueTicketType), [todayLogs])
+  const activeVisits = useMemo(
+    () =>
+      todayLogs
+        .filter((log) => ACTIVE_VISIT_STATUSES.includes(log.visitStatus ?? 'completed'))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        .slice(0, 8),
+    [todayLogs],
+  )
   const handoffRate = todayLogs.length
     ? Math.round((todayLogs.filter((log) => log.handedOffToOfficer === 'true').length / todayLogs.length) * 100)
     : 0
@@ -170,6 +179,34 @@ export function Dashboard({ onOpenQuickLog, onOpenReview, onOpenSession, onOpenP
           <MetricLine label="Review Queue" value={`${reviewQueueCount}건`} warn={reviewQueueCount > 0} />
           <MetricLine label="높은 위험 신호" value={`${review.riskKeyword + review.riskCombo}건`} warn={review.riskKeyword + review.riskCombo > 0} />
           <MetricLine label="삭제 예정" value={`${expiring}건`} warn={expiring > 0} />
+        </section>
+
+        <section className="side-card">
+          <div className="panel-title-row">
+            <div>
+              <p className="eyebrow">현장</p>
+              <h2>상담/대기</h2>
+            </div>
+            <span>{activeVisits.length}건</span>
+          </div>
+          {activeVisits.length > 0 ? (
+            <ul className="live-list">
+              {activeVisits.map((log) => (
+                <li key={log.id}>
+                  <div>
+                    <strong>{visitStatusLabel(log.visitStatus ?? 'completed')}</strong>
+                    <span>{reservationRefLabel(log.reservationRef)}</span>
+                  </div>
+                  <p>{log.caseType}</p>
+                  <small>
+                    {counterReferralLabel(log.handlingCounter)} · {counterReferralLabel(log.counterReferral)}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>현재 대기중/상담중으로 남은 기록은 없습니다.</p>
+          )}
         </section>
 
         <section className={review.riskKeyword || review.riskCombo || privacyCount ? 'side-card alert' : 'side-card'}>

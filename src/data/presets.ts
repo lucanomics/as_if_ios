@@ -62,4 +62,17 @@ export const PRESETS: Preset[] = [
       riskLevel: '낮음',
     },
   },
+  {
+    id: 'preset-online-sticker',
+    label: '전자민원 승인 스티커',
+    patch: {
+      caseType: '전자민원 승인 스티커 부착',
+      guidanceScope: ['전자민원 승인 스티커 담당자 요청'],
+      queueTicketType: 'sticker',
+      counterReferral: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+      handlingCounter: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+      visitStatus: 'sent_to_counter',
+      riskLevel: '낮음',
+    },
+  },
 ]

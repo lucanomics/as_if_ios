@@ -7,16 +7,19 @@ import type {
   QueueTicketType,
   RiskLevel,
   SafetyPhraseTag,
+  VisitStatus,
   VisaStatus,
 } from '../types'
 import { useStore } from '../app/store'
 import {
+  COUNTER_SUGGESTIONS,
   COMMON_VISA_STATUSES,
   RISK_LEVELS,
   SAFETY_PHRASE_RECOMMENDATION,
   SAFETY_PHRASE_TAGS,
   MEMO_WARNING,
   queueLabel,
+  visitStatusLabel,
 } from '../data/constants'
 import { COUNTRIES } from '../data/countries'
 import { PRESETS } from '../data/presets'
@@ -25,41 +28,49 @@ import { detectRiskCombinations } from '../lib/riskCombinationDetector'
 import { scanEntryTexts } from '../lib/privacyGuard'
 import { createEmptyLog, summarizeLog } from '../lib/storage'
 import { Chip, ChipGroup, Field, MultiChipGroup } from './ui'
-import { CounterReferralControl, DirectValueInput, NationalityDirectInput } from './LogFieldControls'
+import { CounterReferralControl, DirectValueInput, NationalityDirectInput, ReservationRefControl } from './LogFieldControls'
 import { nationalityLabel } from './NationalityPicker'
 
-const QUICK_COUNTRIES = ['US', 'CN', 'VN', 'MN', 'UZ', 'RU', 'PH', 'TH']
+const QUICK_COUNTRIES = ['CN', 'IN', 'PH', 'ID', 'VN', 'US', 'MN', 'UZ', 'RU', 'TH']
 const QUICK_CASE_TYPES: CaseType[] = [
+  '사증발급(E-10 제외)',
+  '주소지 이전',
+  '사증발급(E-10)',
+  '정보공개청구',
+  '출입국사실증명',
+  '등록증 교부',
+  '지문 등록',
+  '여권 정보 변경 신고',
+  '전자민원 승인 스티커 부착',
   '방문예약/예약 문제',
-  '전자민원/하이코리아 계정',
   '외국인등록',
-  '체류기간 연장',
-  '체류자격 변경',
-  '근무처 변경/추가',
-  '국적/귀화/국적회복',
-  '사범/범칙금 가능성',
-  '기타',
 ]
 const QUICK_GUIDANCE: GuidanceScope[] = [
+  '예약번호 확인',
   '방문예약 방법 안내',
-  '하이코리아 계정/예약 문제 안내',
   '서류 일반 안내',
   '번호표 부여',
   '번호표 없이 돌려보냄',
   '예약 필요 안내 후 돌려보냄',
   '담당 창구로 안내',
+  '전자민원 승인 스티커 담당자 요청',
   '담당자에게 직접 인계',
 ]
 const QUICK_QUEUE: QueueTicketType[] = [
   'reservation_confirmed',
   'non_reservation',
   'not_issued',
-  'stay',
+  'visa',
+  'visa_e10',
   'certificate',
-  'nationality',
-  'general_information',
-  'officer_handoff',
+  'card_pickup',
+  'fingerprint',
+  'address_change',
+  'info_disclosure',
+  'passport_change',
+  'sticker',
 ]
+const QUICK_VISIT_STATUSES: VisitStatus[] = ['waiting', 'in_consultation', 'sent_to_counter', 'completed', 'returned']
 
 function quickSeed(retentionDays: number, prefill?: Partial<LogEntry>): LogEntry {
   const common = PRESETS.find((p) => p.id === 'preset-e2-hikorea')?.patch ?? {}
@@ -111,8 +122,8 @@ export function QuickCapturePanel() {
     [log.memo, log.nonIdentifyingKeywords],
   )
   const privacyHits = useMemo(
-    () => scanEntryTexts(log.memo, log.nonIdentifyingKeywords),
-    [log.memo, log.nonIdentifyingKeywords],
+    () => scanEntryTexts(log.memo, log.nonIdentifyingKeywords, [log.reservationRef?.value ?? '']),
+    [log.memo, log.nonIdentifyingKeywords, log.reservationRef?.value],
   )
   const combos = useMemo(
     () => detectRiskCombinations({ ...log, detectedRiskKeywords: detectedKeywords }),
@@ -138,6 +149,22 @@ export function QuickCapturePanel() {
         ? log.guidanceScope.filter((x) => x !== scope)
         : [...log.guidanceScope, scope],
     })
+  }
+
+  const selectCaseType = (caseType: CaseType) => {
+    if (caseType === '전자민원 승인 스티커 부착') {
+      set({
+        caseType,
+        guidanceScope: ['전자민원 승인 스티커 담당자 요청'],
+        queueTicketType: 'sticker',
+        counterReferral: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+        handlingCounter: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+        visitStatus: 'sent_to_counter',
+        riskLevel: '낮음',
+      })
+      return
+    }
+    set({ caseType })
   }
 
   const toggleSafety = (tag: SafetyPhraseTag) => {
@@ -187,6 +214,8 @@ export function QuickCapturePanel() {
             guidanceScope: stamped.guidanceScope,
             queueTicketType: stamped.queueTicketType,
             counterReferral: stamped.counterReferral,
+            handlingCounter: stamped.handlingCounter,
+            visitStatus: stamped.visitStatus,
             safetyPhraseUsed: stamped.safetyPhraseUsed,
           }
       : (sessionDefaults ?? {})
@@ -200,7 +229,7 @@ export function QuickCapturePanel() {
         <div>
           <p className="eyebrow">10초 기록</p>
           <h2 id="quick-capture-title">빠른 기록</h2>
-          <p>다섯 가지만 고르고 요약을 확인하세요. 메모는 필요할 때만 엽니다.</p>
+          <p>민원 사유와 현황을 빠르게 찍고 요약을 확인하세요. 메모는 필요할 때만 엽니다.</p>
         </div>
         <button
           className="btn-ghost shrink-0"
@@ -270,7 +299,7 @@ export function QuickCapturePanel() {
             <ChipGroup
               options={QUICK_CASE_TYPES}
               value={log.caseType}
-              onChange={(v: CaseType) => set({ caseType: v })}
+              onChange={selectCaseType}
             />
             <DirectValueInput
               placeholder="민원유형 직접 입력 예: 사증발급인정서"
@@ -312,6 +341,33 @@ export function QuickCapturePanel() {
             <CounterReferralControl
               value={log.counterReferral}
               onChange={(counterReferral) => set({ counterReferral })}
+            />
+          </div>
+        </NumberedRow>
+
+        <NumberedRow number={6} label="현황/예약/응대">
+          <div className="space-y-4">
+            <ChipGroup
+              options={QUICK_VISIT_STATUSES}
+              value={log.visitStatus}
+              onChange={(visitStatus) => set({ visitStatus })}
+              render={visitStatusLabel}
+            />
+            <ReservationRefControl
+              value={log.reservationRef}
+              onChange={(reservationRef) => set({ reservationRef })}
+            />
+            <CounterReferralControl
+              value={log.handlingCounter}
+              onChange={(handlingCounter) => set({ handlingCounter })}
+              suggestions={COUNTER_SUGGESTIONS}
+              modeLabels={{
+                not_referred: '응대 미기재',
+                referred: '응대/부탁 기록',
+                unknown: '기억 안 남',
+              }}
+              placeholder="응대한 창구/담당자 예: 7, 한슬 반장"
+              buttonLabel="응대 입력"
             />
           </div>
         </NumberedRow>

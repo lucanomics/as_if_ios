@@ -126,6 +126,8 @@ function Shell() {
       caseType: defaults.caseType,
       queueTicketType: defaults.queueTicketType,
       counterReferral: defaults.counterReferral,
+      handlingCounter: defaults.handlingCounter,
+      visitStatus: defaults.visitStatus,
       guidanceScope: defaults.guidanceScope,
       safetyPhraseUsed: defaults.safetyPhraseUsed,
     }

@@ -144,6 +144,9 @@ export function createEmptyLog(retentionDays = DEFAULT_RETENTION_DAYS): LogEntry
     guidanceScope: [],
     queueTicketType: 'not_issued',
     counterReferral: { mode: 'not_referred' },
+    handlingCounter: { mode: 'not_referred' },
+    visitStatus: 'completed',
+    reservationRef: { mode: 'none' },
     nonIdentifyingKeywords: [],
     safetyPhraseUsed: [],
     usedPhraseIds: [],
@@ -236,17 +239,30 @@ export function summarizeLog(
       : counter.mode === 'unknown'
         ? '창구 기억 안 남'
         : '창구 안내 없음'
+  const handled = log.handlingCounter ?? { mode: 'not_referred' as const }
+  const handledPart =
+    handled.mode === 'referred'
+      ? `응대 ${handled.counterLabel ?? (handled.counterNumber ? `${handled.counterNumber}번 창구` : '창구')}`
+      : handled.mode === 'unknown'
+        ? '응대 창구 기억 안 남'
+        : ''
+  const reservationPart =
+    log.reservationRef?.value && log.reservationRef.mode !== 'none'
+      ? `예약 ${log.reservationRef.value}`
+      : ''
   const parts = [
     log.visaStatus,
     labels.nationality(log.nationality),
     log.caseType,
+    reservationPart,
     labels.queue(log.queueTicketType) + ' 번호표',
     counterPart,
+    handledPart,
     log.guidanceScope[0] ?? '안내범위 미선택',
     log.safetyPhraseUsed.length && !log.safetyPhraseUsed.includes('미사용')
       ? '안전문구 사용'
       : '안전문구 미사용',
     log.riskLevel ? `리스크 ${log.riskLevel}` : '리스크 미선택',
-  ]
+  ].filter(Boolean)
   return parts.join(' / ')
 }

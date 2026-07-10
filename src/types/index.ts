@@ -39,6 +39,24 @@ export interface CounterReferral {
   counterLabel?: string
 }
 
+export type VisitStatus =
+  | 'waiting' // 대기중
+  | 'in_consultation' // 상담중
+  | 'sent_to_counter' // 창구로 보냄
+  | 'completed' // 처리/안내 완료
+  | 'returned' // 돌려보냄
+  | 'needs_followup' // 추가 확인 필요
+
+export type ReservationRefMode =
+  | 'none' // 없음
+  | 'partial' // 뒤 4자리/별칭 등 최소 확인값
+  | 'full_or_unknown' // 전체 번호이거나 길이를 알 수 없는 값
+
+export interface ReservationReference {
+  mode: ReservationRefMode
+  value?: string
+}
+
 export type SafetyPhraseTag =
   | '예약과 신고기한 별도 안내'
   | '허가 전 활동 금지 안내'
@@ -82,6 +100,9 @@ export interface LogEntry {
   guidanceScope: GuidanceScope[]
   queueTicketType: QueueTicketType
   counterReferral: CounterReferral
+  handlingCounter: CounterReferral
+  visitStatus: VisitStatus
+  reservationRef: ReservationReference
   nonIdentifyingKeywords: string[]
   safetyPhraseUsed: SafetyPhraseTag[]
   usedPhraseIds: string[]
@@ -131,6 +152,8 @@ export interface WorkSession {
     caseType?: CaseType
     queueTicketType?: QueueTicketType
     counterReferral?: CounterReferral
+    handlingCounter?: CounterReferral
+    visitStatus?: VisitStatus
     guidanceScope?: GuidanceScope[]
     safetyPhraseUsed?: SafetyPhraseTag[]
   }
@@ -155,6 +178,9 @@ export interface Preset {
       | 'caseType'
       | 'queueTicketType'
       | 'counterReferral'
+      | 'handlingCounter'
+      | 'visitStatus'
+      | 'reservationRef'
       | 'guidanceScope'
       | 'safetyPhraseUsed'
       | 'riskLevel'
