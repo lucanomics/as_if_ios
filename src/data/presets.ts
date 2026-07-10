@@ -20,7 +20,7 @@ export const PRESETS: Preset[] = [
     patch: {
       visaStatus: 'E-2',
       nationality: { mode: 'not_recorded' },
-      caseType: '하이코리아 예약',
+      caseType: '전자민원/하이코리아 계정',
       queueTicketType: 'reservation_confirmed',
       guidanceScope: ['하이코리아 계정/예약 문제 안내'],
       safetyPhraseUsed: ['예약과 신고기한 별도 안내'],
@@ -57,8 +57,21 @@ export const PRESETS: Preset[] = [
     label: '단순 번호표/위치 안내',
     patch: {
       caseType: '기타',
-      guidanceScope: ['단순 위치/번호표 안내'],
+      guidanceScope: ['단순 위치 안내', '번호표 부여'],
       queueTicketType: 'general_information',
+      riskLevel: '낮음',
+    },
+  },
+  {
+    id: 'preset-online-sticker',
+    label: '전자민원 승인 스티커',
+    patch: {
+      caseType: '전자민원 승인 스티커 부착',
+      guidanceScope: ['전자민원 승인 스티커 담당자 요청'],
+      queueTicketType: 'sticker',
+      counterReferral: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+      handlingCounter: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+      visitStatus: 'sent_to_counter',
       riskLevel: '낮음',
     },
   },

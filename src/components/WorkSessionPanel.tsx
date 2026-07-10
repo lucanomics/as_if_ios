@@ -3,15 +3,20 @@ import type { WorkSession } from '../types'
 import { useStore } from '../app/store'
 import {
   CASE_TYPES,
+  COUNTER_SUGGESTIONS,
+  COMMON_VISA_STATUSES,
   GUIDANCE_SCOPES,
   QUEUE_TICKET_TYPES,
   SAFETY_PHRASE_TAGS,
   VISA_STATUSES,
+  VISIT_STATUSES,
   queueLabel,
+  visitStatusLabel,
 } from '../data/constants'
 import { computeShiftReview, isToday } from '../lib/analytics'
 import { RETENTION_OPTIONS, findExpiredLogs } from '../lib/retention'
 import { Banner, Chip, ChipGroup, Field, StatCard } from './ui'
+import { CounterReferralControl, DirectValueInput, NationalityDirectInput } from './LogFieldControls'
 import { NationalityPicker } from './NationalityPicker'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -48,44 +53,117 @@ export function WorkSessionPanel() {
         </p>
         <div className="card space-y-4">
           <Field label="오늘 기본 체류자격">
-            <ChipGroup
-              options={VISA_STATUSES}
-              value={draft.defaults.visaStatus ?? null}
-              onChange={(v) => setDefault({ visaStatus: v })}
-            />
+            <div className="space-y-2">
+              <ChipGroup
+                options={COMMON_VISA_STATUSES}
+                value={draft.defaults.visaStatus ?? null}
+                onChange={(v) => setDefault({ visaStatus: v })}
+              />
+              <details>
+                <summary className="cursor-pointer text-xs font-bold text-accent-strong">전체 체류자격 보기</summary>
+                <div className="mt-2">
+                  <ChipGroup
+                    options={VISA_STATUSES}
+                    value={draft.defaults.visaStatus ?? null}
+                    onChange={(v) => setDefault({ visaStatus: v })}
+                  />
+                </div>
+              </details>
+              <DirectValueInput
+                placeholder="기본 체류자격 직접 입력"
+                buttonLabel="체류자격 입력"
+                transform={(v) => v.toUpperCase()}
+                onSubmit={(visaStatus) => setDefault({ visaStatus })}
+              />
+            </div>
           </Field>
           <Field label="오늘 기본 국적">
-            <NationalityPicker
-              value={draft.defaults.nationality ?? { mode: 'not_recorded' }}
-              onChange={(n) => setDefault({ nationality: n })}
-            />
+            <div className="space-y-2">
+              <NationalityPicker
+                value={draft.defaults.nationality ?? { mode: 'not_recorded' }}
+                onChange={(n) => setDefault({ nationality: n })}
+              />
+              <NationalityDirectInput onSubmit={(nationality) => setDefault({ nationality })} />
+            </div>
           </Field>
           <Field label="오늘 기본 민원유형">
-            <ChipGroup
-              options={CASE_TYPES}
-              value={draft.defaults.caseType ?? null}
-              onChange={(v) => setDefault({ caseType: v })}
-            />
+            <div className="space-y-2">
+              <ChipGroup
+                options={CASE_TYPES}
+                value={draft.defaults.caseType ?? null}
+                onChange={(v) => setDefault({ caseType: v })}
+              />
+              <DirectValueInput
+                placeholder="기본 민원유형 직접 입력"
+                buttonLabel="유형 입력"
+                maxLength={40}
+                onSubmit={(caseType) => setDefault({ caseType })}
+              />
+            </div>
           </Field>
           <Field label="오늘 기본 번호표 유형">
+            <div className="space-y-2">
+              <ChipGroup
+                options={QUEUE_TICKET_TYPES.map((q) => q.value)}
+                value={draft.defaults.queueTicketType ?? null}
+                onChange={(v) => setDefault({ queueTicketType: v })}
+                render={queueLabel}
+              />
+              <DirectValueInput
+                placeholder="기본 번호표 유형 직접 입력"
+                buttonLabel="번호표 입력"
+                maxLength={32}
+                onSubmit={(queueTicketType) => setDefault({ queueTicketType })}
+              />
+            </div>
+          </Field>
+          <Field label="오늘 기본 창구 안내">
+            <CounterReferralControl
+              value={draft.defaults.counterReferral}
+              onChange={(counterReferral) => setDefault({ counterReferral })}
+            />
+          </Field>
+          <Field label="오늘 기본 응대 창구/담당자">
+            <CounterReferralControl
+              value={draft.defaults.handlingCounter}
+              onChange={(handlingCounter) => setDefault({ handlingCounter })}
+              suggestions={COUNTER_SUGGESTIONS}
+              modeLabels={{
+                not_referred: '응대 미기재',
+                referred: '응대/부탁 기록',
+                unknown: '기억 안 남',
+              }}
+              placeholder="기본 응대 창구/담당자"
+              buttonLabel="응대 입력"
+            />
+          </Field>
+          <Field label="오늘 기본 현황">
             <ChipGroup
-              options={QUEUE_TICKET_TYPES.map((q) => q.value)}
-              value={draft.defaults.queueTicketType ?? null}
-              onChange={(v) => setDefault({ queueTicketType: v })}
-              render={queueLabel}
+              options={VISIT_STATUSES.map((status) => status.value)}
+              value={draft.defaults.visitStatus ?? null}
+              onChange={(visitStatus) => setDefault({ visitStatus })}
+              render={visitStatusLabel}
             />
           </Field>
           <Field label="오늘 기본 안내범위 (첫 항목만 기본 적용)">
-            <div className="flex flex-wrap gap-2">
-              {GUIDANCE_SCOPES.map((s) => (
-                <Chip
-                  key={s}
-                  active={(draft.defaults.guidanceScope ?? [])[0] === s}
-                  onClick={() => setDefault({ guidanceScope: [s] })}
-                >
-                  {s}
-                </Chip>
-              ))}
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {GUIDANCE_SCOPES.map((s) => (
+                  <Chip
+                    key={s}
+                    active={(draft.defaults.guidanceScope ?? [])[0] === s}
+                    onClick={() => setDefault({ guidanceScope: [s] })}
+                  >
+                    {s}
+                  </Chip>
+                ))}
+              </div>
+              <DirectValueInput
+                placeholder="기본 안내범위 직접 입력"
+                buttonLabel="안내 입력"
+                maxLength={48}
+                onSubmit={(scope) => setDefault({ guidanceScope: [scope] })}
+              />
             </div>
           </Field>
           <Field label="오늘 기본 안전문구">

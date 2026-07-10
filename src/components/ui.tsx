@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { X } from 'lucide-react'
 
 export function Chip({
   active,
@@ -71,7 +72,7 @@ export function MultiChipGroup<T extends string>({
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="label">{label}</span>
         {hint && <span className="text-xs text-gray-400">{hint}</span>}
       </div>
@@ -92,8 +93,8 @@ export function Banner({
       ? 'border-risk-high/30 bg-risk-high/5 text-risk-high'
       : tone === 'warn'
         ? 'border-risk-caution/30 bg-risk-caution/5 text-risk-caution'
-        : 'border-gray-200 bg-gray-50 text-gray-600'
-  return <div className={`rounded-xl border px-3 py-2 text-sm ${cls}`}>{children}</div>
+        : 'border-line bg-slatebg text-muted'
+  return <div className={`rounded-lg border px-3 py-2 text-sm font-medium leading-6 ${cls}`}>{children}</div>
 }
 
 export function Modal({
@@ -111,13 +112,13 @@ export function Modal({
 }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
-      <div className={`card my-auto w-full ${wide ? 'max-w-3xl' : 'max-w-xl'}`}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-3 sm:p-8">
+      <div className={`card my-0 max-h-[calc(100vh-1.5rem)] w-full overflow-y-auto sm:my-auto ${wide ? 'max-w-4xl' : 'max-w-xl'}`}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title">{title}</h2>
           {onClose && (
-            <button onClick={onClose} className="text-gray-400 hover:text-ink" aria-label="닫기">
-              ✕
+            <button onClick={onClose} className="icon-btn h-9 w-9" aria-label="닫기">
+              <X size={18} aria-hidden="true" />
             </button>
           )}
         </div>

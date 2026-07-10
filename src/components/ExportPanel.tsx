@@ -23,8 +23,8 @@ export function ExportPanel({ onEdit }: { onEdit: (l: LogEntry) => void }) {
 
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')
 
-  const exportJSON = () => downloadFile(`deskshield-backup-${stamp()}.json`, toJSON(logs), 'application/json')
-  const exportCSV = () => downloadFile(`deskshield-backup-${stamp()}.csv`, toCSV(logs), 'text/csv;charset=utf-8')
+  const exportJSON = () => downloadFile(`desksht-backup-${stamp()}.json`, toJSON(logs), 'application/json')
+  const exportCSV = () => downloadFile(`desksht-backup-${stamp()}.csv`, toCSV(logs), 'text/csv;charset=utf-8')
 
   const onImport = async (file: File) => {
     setImportError(null)

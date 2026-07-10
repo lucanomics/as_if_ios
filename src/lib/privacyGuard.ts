@@ -48,9 +48,9 @@ export function scanPrivacy(text: string): PrivacyHit[] {
   return hits
 }
 
-// 여러 필드를 한 번에 스캔 (키워드 + 메모)
-export function scanEntryTexts(memo: string, keywords: string[]): PrivacyHit[] {
-  const combined = [memo, ...keywords].join('\n')
+// 여러 필드를 한 번에 스캔 (키워드 + 메모 + 당일 현황용 확인값)
+export function scanEntryTexts(memo: string, keywords: string[], extraTexts: string[] = []): PrivacyHit[] {
+  const combined = [memo, ...keywords, ...extraTexts].join('\n')
   return scanPrivacy(combined)
 }
 

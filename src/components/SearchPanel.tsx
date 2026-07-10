@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { LogEntry } from '../types'
 import { useStore } from '../app/store'
 import { queueLabel } from '../data/constants'
+import { counterReferralLabel, reservationRefLabel } from './LogFieldControls'
 import { nationalityLabel } from './NationalityPicker'
 import { LogCard } from './LogCard'
 import { Banner } from './ui'
@@ -13,6 +14,12 @@ function haystack(l: LogEntry): string {
     l.caseType,
     l.guidanceScope.join(' '),
     queueLabel(l.queueTicketType),
+    l.counterReferral?.mode ?? '',
+    l.counterReferral?.counterNumber ?? '',
+    l.counterReferral?.counterLabel ?? '',
+    counterReferralLabel(l.handlingCounter),
+    l.visitStatus ?? '',
+    reservationRefLabel(l.reservationRef),
     l.nonIdentifyingKeywords.join(' '),
     l.memo,
     l.riskLevel ?? '',
@@ -37,7 +44,7 @@ export function SearchPanel({ onEdit, initialQuery = '' }: { onEdit: (l: LogEntr
     <div className="space-y-4">
       <div>
         <h2 className="section-title">검색</h2>
-        <p className="text-sm text-gray-500">체류자격, 국적, 민원유형, 안내범위, 번호표 유형, 키워드, 메모, 리스크, 검토 플래그로 검색합니다.</p>
+        <p className="text-sm text-gray-500">체류자격, 국적, 민원유형, 안내범위, 번호표/창구, 예약 확인값, 키워드, 메모, 리스크, 검토 플래그로 검색합니다.</p>
       </div>
       <input
         autoFocus

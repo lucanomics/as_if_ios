@@ -1,4 +1,20 @@
 import { useEffect, useState } from 'react'
+import {
+  BookOpen,
+  CalendarClock,
+  ClipboardCheck,
+  Download,
+  FileSearch,
+  Home,
+  ListChecks,
+  LockKeyhole,
+  MessageSquareText,
+  Plus,
+  Search,
+  Settings,
+  Shield,
+  type LucideIcon,
+} from 'lucide-react'
 import type { LogEntry } from '../types'
 import { StoreProvider, useStore } from './store'
 import { APP_NAME, APP_SUBTITLE, DEPLOY_NOTICE, FIXED_NOTICE } from '../data/constants'
@@ -30,18 +46,43 @@ type View =
   | 'export'
   | 'settings'
 
-const NAV: { id: View; label: string }[] = [
-  { id: 'dashboard', label: '대시보드' },
-  { id: 'review', label: 'Review Queue' },
-  { id: 'session', label: '근무 세션' },
-  { id: 'privacy', label: '개인정보 청소' },
-  { id: 'phrases', label: '안전문구' },
-  { id: 'manuals', label: '매뉴얼' },
-  { id: 'checklists', label: '체크리스트' },
-  { id: 'reconstruction', label: '사건 재구성' },
-  { id: 'export', label: '내보내기' },
-  { id: 'settings', label: '설정·안내' },
+const NAV: { id: View; label: string; shortLabel: string; icon: LucideIcon }[] = [
+  { id: 'dashboard', label: '오늘', shortLabel: '오늘', icon: Home },
+  { id: 'review', label: '검토', shortLabel: '검토', icon: ClipboardCheck },
+  { id: 'session', label: '세션', shortLabel: '세션', icon: CalendarClock },
+  { id: 'privacy', label: '청소', shortLabel: '청소', icon: Shield },
+  { id: 'phrases', label: '안전문구', shortLabel: '문구', icon: MessageSquareText },
+  { id: 'manuals', label: '매뉴얼', shortLabel: '자료', icon: BookOpen },
+  { id: 'checklists', label: '체크리스트', shortLabel: '체크', icon: ListChecks },
+  { id: 'reconstruction', label: '사건 재구성', shortLabel: '재구성', icon: FileSearch },
+  { id: 'export', label: '내보내기', shortLabel: '백업', icon: Download },
+  { id: 'settings', label: '설정·안내', shortLabel: '설정', icon: Settings },
 ]
+
+function NavButton({
+  item,
+  active,
+  onClick,
+  compact,
+}: {
+  item: (typeof NAV)[number]
+  active: boolean
+  onClick: () => void
+  compact?: boolean
+}) {
+  const Icon = item.icon
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={compact ? `mobile-nav-item ${active ? 'is-active' : ''}` : `rail-item ${active ? 'is-active' : ''}`}
+      aria-current={active ? 'page' : undefined}
+    >
+      <Icon size={compact ? 17 : 19} strokeWidth={2.2} aria-hidden="true" />
+      <span>{compact ? item.shortLabel : item.label}</span>
+    </button>
+  )
+}
 
 function Shell() {
   const store = useStore()
@@ -53,14 +94,12 @@ function Shell() {
 
   const lock = store.settings.lock
 
-  // 잠금이 켜져 있으면 로드 직후 잠긴 상태로 시작
   useEffect(() => {
     if (store.ready && lock?.enabled) setLocked(true)
     // 최초 준비 시 1회만
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.ready])
 
-  // 자동 잠금: 미사용 타이머. 활동이 있으면 리셋한다.
   useEffect(() => {
     if (!lock?.enabled || locked) return
     const minutes = lock.autoLockMinutes || 5
@@ -70,29 +109,30 @@ function Shell() {
       timer = window.setTimeout(() => setLocked(true), minutes * 60_000)
     }
     const events: (keyof WindowEventMap)[] = ['mousedown', 'keydown', 'touchstart', 'pointerdown']
-    events.forEach((e) => window.addEventListener(e, reset, { passive: true }))
+    events.forEach((eventName) => window.addEventListener(eventName, reset, { passive: true }))
     reset()
     return () => {
       window.clearTimeout(timer)
-      events.forEach((e) => window.removeEventListener(e, reset))
+      events.forEach((eventName) => window.removeEventListener(eventName, reset))
     }
   }, [lock?.enabled, lock?.autoLockMinutes, locked])
 
-  // 세션 기본값으로부터 prefill 구성
   const sessionPrefill = (): Partial<LogEntry> => {
-    const d = store.session?.defaults
-    if (!d) return {}
+    const defaults = store.session?.defaults
+    if (!defaults) return {}
     return {
-      visaStatus: d.visaStatus,
-      nationality: d.nationality,
-      caseType: d.caseType,
-      queueTicketType: d.queueTicketType,
-      guidanceScope: d.guidanceScope,
-      safetyPhraseUsed: d.safetyPhraseUsed,
+      visaStatus: defaults.visaStatus,
+      nationality: defaults.nationality,
+      caseType: defaults.caseType,
+      queueTicketType: defaults.queueTicketType,
+      counterReferral: defaults.counterReferral,
+      handlingCounter: defaults.handlingCounter,
+      visitStatus: defaults.visitStatus,
+      guidanceScope: defaults.guidanceScope,
+      safetyPhraseUsed: defaults.safetyPhraseUsed,
     }
   }
 
-  // 전역 단축키 (네비게이션)
   useEffect(() => {
     return attachShortcuts({
       openSearch: () => setSearchOpen(true),
@@ -104,31 +144,38 @@ function Shell() {
     })
   }, [])
 
-  const openEdit = (l: LogEntry) => {
-    setEditing(l)
+  const openQuickLog = () => {
+    setEditing(null)
+    setQuickOpen(true)
+  }
+
+  const openEdit = (log: LogEntry) => {
+    setEditing(log)
     setSearchOpen(false)
     setQuickOpen(true)
   }
 
   if (!store.ready) {
-    return <div className="flex h-full items-center justify-center text-gray-400">불러오는 중…</div>
+    return (
+      <div className="flex h-full items-center justify-center bg-slatebg text-sm font-medium text-muted">
+        불러오는 중...
+      </div>
+    )
   }
 
-  // 잠긴 상태면 다른 화면을 렌더링하지 않아 업무 데이터가 노출되지 않는다.
   if (locked && lock?.enabled) {
     return <LockScreen lock={lock} onUnlock={() => setLocked(false)} />
   }
 
   return (
-    <div className="min-h-full">
-      {/* 첫 실행 온보딩 */}
+    <div className="min-h-full bg-slatebg text-ink">
       <Modal open={!store.settings.onboardingAcknowledged} title={`${APP_NAME} 시작하기`}>
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">{APP_SUBTITLE}</p>
-          <div className="rounded-xl border border-risk-high/30 bg-risk-high/5 p-3 text-sm text-risk-high">
+          <p className="text-sm text-muted">{APP_SUBTITLE}</p>
+          <div className="rounded-lg border border-risk-high/30 bg-risk-high/5 p-3 text-sm text-risk-high">
             {DEPLOY_NOTICE}
           </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">{FIXED_NOTICE}</div>
+          <div className="rounded-lg border border-line bg-white p-3 text-sm text-muted">{FIXED_NOTICE}</div>
           <button
             className="btn-primary w-full"
             onClick={() => store.updateSettings({ onboardingAcknowledged: true })}
@@ -138,73 +185,88 @@ function Shell() {
         </div>
       </Modal>
 
-      {/* 헤더 */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+      <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold text-ink">{APP_NAME}</span>
-              <span className="hidden text-xs text-gray-400 sm:inline">{APP_SUBTITLE}</span>
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="text-2xl font-extrabold tracking-normal text-ink">{APP_NAME}</span>
+              <span className="text-sm font-medium text-muted">{APP_SUBTITLE}</span>
             </div>
+            <p className="mt-1 text-xs font-medium text-accent-strong">
+              브라우저 로컬 저장 · 공식 기록 아님 · 개인정보 입력 금지
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="btn-ghost" onClick={() => setSearchOpen(true)} title="검색 (⌘/Ctrl+K)">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            {lock?.enabled && (
+              <button className="icon-btn" type="button" onClick={() => setLocked(true)} title="앱 잠금">
+                <LockKeyhole size={18} aria-hidden="true" />
+                <span className="sr-only">앱 잠금</span>
+              </button>
+            )}
+            <button className="btn-ghost flex-1 sm:flex-none" type="button" onClick={() => setSearchOpen(true)} title="검색 (Ctrl/Command+K)">
+              <Search size={18} aria-hidden="true" />
               검색
             </button>
-            <button
-              className="btn-primary"
-              onClick={() => {
-                setEditing(null)
-                setQuickOpen(true)
-              }}
-              title="빠른 기록 (⌘/Ctrl+N)"
-            >
-              + 빠른 기록
+            <button className="btn-primary flex-1 sm:flex-none" type="button" onClick={openQuickLog} title="빠른 기록 (Ctrl/Command+N)">
+              <Plus size={18} aria-hidden="true" />
+              빠른 기록
             </button>
           </div>
         </div>
-        {/* 네비게이션 */}
-        <nav className="mx-auto max-w-6xl overflow-x-auto px-2 pb-2">
-          <div className="flex gap-1">
-            {NAV.map((n) => (
-              <button
-                key={n.id}
-                onClick={() => setView(n.id)}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ${
-                  view === n.id ? 'bg-ink text-white' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {n.label}
-              </button>
-            ))}
-          </div>
-        </nav>
       </header>
 
-      {/* 본문 */}
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        {view === 'dashboard' && (
-          <Dashboard onOpenReview={() => setView('review')} onOpenSession={() => setView('session')} />
-        )}
-        {view === 'review' && <ReviewQueue onEdit={openEdit} />}
-        {view === 'session' && <WorkSessionPanel />}
-        {view === 'privacy' && <PrivacyCleanup onEdit={openEdit} />}
-        {view === 'phrases' && <PhraseLibrary />}
-        {view === 'manuals' && <ManualArchive />}
-        {view === 'checklists' && <ChecklistPanel />}
-        {view === 'reconstruction' && <ReconstructionMode onEdit={openEdit} />}
-        {view === 'export' && <ExportPanel onEdit={openEdit} />}
-        {view === 'settings' && <DeployNotice onLockNow={() => setLocked(true)} />}
-      </main>
+      <div className="mx-auto flex max-w-[1440px]">
+        <aside className="sticky top-[73px] hidden h-[calc(100vh-73px)] w-56 shrink-0 border-r border-line bg-white px-3 py-5 md:block">
+          <nav className="space-y-1" aria-label="주요 화면">
+            {NAV.map((item) => (
+              <NavButton key={item.id} item={item} active={view === item.id} onClick={() => setView(item.id)} />
+            ))}
+          </nav>
+        </aside>
 
-      {/* 고정 주의문 */}
-      <footer className="mx-auto max-w-6xl px-4 pb-24 pt-4">
-        <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-center text-xs text-gray-500">
-          {FIXED_NOTICE}
-        </p>
-      </footer>
+        <div className="min-w-0 flex-1">
+          <nav className="mobile-nav md:hidden" aria-label="주요 화면">
+            <div className="flex min-w-max gap-2 px-4 py-3">
+              {NAV.map((item) => (
+                <NavButton
+                  key={item.id}
+                  item={item}
+                  compact
+                  active={view === item.id}
+                  onClick={() => setView(item.id)}
+                />
+              ))}
+            </div>
+          </nav>
 
-      {/* 빠른 기록 / 편집 모달 */}
+          <main className="min-w-0 px-4 py-5 sm:px-6 lg:px-8">
+            {view === 'dashboard' && (
+              <Dashboard
+                onOpenQuickLog={openQuickLog}
+                onOpenReview={() => setView('review')}
+                onOpenSession={() => setView('session')}
+                onOpenPrivacy={() => setView('privacy')}
+              />
+            )}
+            {view === 'review' && <ReviewQueue onEdit={openEdit} />}
+            {view === 'session' && <WorkSessionPanel />}
+            {view === 'privacy' && <PrivacyCleanup onEdit={openEdit} />}
+            {view === 'phrases' && <PhraseLibrary />}
+            {view === 'manuals' && <ManualArchive />}
+            {view === 'checklists' && <ChecklistPanel />}
+            {view === 'reconstruction' && <ReconstructionMode onEdit={openEdit} />}
+            {view === 'export' && <ExportPanel onEdit={openEdit} />}
+            {view === 'settings' && <DeployNotice onLockNow={() => setLocked(true)} />}
+          </main>
+
+          <footer className="px-4 pb-24 pt-2 sm:px-6 lg:px-8">
+            <p className="rounded-lg border border-line bg-white px-3 py-2 text-center text-xs text-muted">
+              {FIXED_NOTICE}
+            </p>
+          </footer>
+        </div>
+      </div>
+
       <Modal
         open={quickOpen}
         title={editing ? '로그 수정' : '빠른 기록'}
@@ -225,7 +287,6 @@ function Shell() {
         />
       </Modal>
 
-      {/* 검색 모달 */}
       <Modal open={searchOpen} title="검색" wide onClose={() => setSearchOpen(false)}>
         <SearchPanel onEdit={openEdit} />
       </Modal>

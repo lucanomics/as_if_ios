@@ -3,6 +3,8 @@ import type { LogEntry, Phrase, SafetyPhraseTag } from '../types'
 import { useStore } from '../app/store'
 import {
   CASE_TYPES,
+  COUNTER_SUGGESTIONS,
+  COMMON_VISA_STATUSES,
   CONFIDENCE_LEVELS,
   GUIDANCE_SCOPES,
   QUEUE_TICKET_TYPES,
@@ -11,8 +13,10 @@ import {
   SAFETY_PHRASE_TAGS,
   SAFETY_PHRASE_RECOMMENDATION,
   VISA_STATUSES,
+  VISIT_STATUSES,
   MEMO_WARNING,
   queueLabel,
+  visitStatusLabel,
 } from '../data/constants'
 import { PRESETS } from '../data/presets'
 import { createEmptyLog, summarizeLog } from '../lib/storage'
@@ -21,6 +25,7 @@ import { detectRiskCombinations } from '../lib/riskCombinationDetector'
 import { scanEntryTexts } from '../lib/privacyGuard'
 import { suggestMemo } from '../lib/autoTemplate'
 import { Banner, Chip, ChipGroup, Field, MultiChipGroup } from './ui'
+import { CounterReferralControl, DirectValueInput, NationalityDirectInput, ReservationRefControl } from './LogFieldControls'
 import { NationalityPicker, nationalityLabel } from './NationalityPicker'
 
 interface Props {
@@ -32,7 +37,7 @@ interface Props {
 // prefill 로부터 초기 로그 생성.
 // prefill 의 undefined 값이 빈 로그의 배열/기본값을 덮어써 깨지지 않도록 제거한다.
 function seedLog(initial?: LogEntry, prefill?: Partial<LogEntry>, retentionDays = 90): LogEntry {
-  if (initial) return { ...initial }
+  if (initial) return { ...createEmptyLog(retentionDays), ...initial }
   const clean: Partial<LogEntry> = {}
   if (prefill) {
     for (const [k, v] of Object.entries(prefill)) {
@@ -65,8 +70,8 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
     [log.memo, log.nonIdentifyingKeywords],
   )
   const privacyHits = useMemo(
-    () => scanEntryTexts(log.memo, log.nonIdentifyingKeywords),
-    [log.memo, log.nonIdentifyingKeywords],
+    () => scanEntryTexts(log.memo, log.nonIdentifyingKeywords, [log.reservationRef?.value ?? '']),
+    [log.memo, log.nonIdentifyingKeywords, log.reservationRef?.value],
   )
   const combos = useMemo(
     () =>
@@ -143,6 +148,22 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
         : [...log.reviewFlags, f],
     })
 
+  const selectCaseType = (caseType: string) => {
+    if (caseType === '전자민원 승인 스티커 부착') {
+      set({
+        caseType,
+        guidanceScope: ['전자민원 승인 스티커 담당자 요청'],
+        queueTicketType: 'sticker',
+        counterReferral: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+        handlingCounter: { mode: 'referred', counterLabel: '전자민원 스티커 한슬 반장' },
+        visitStatus: 'sent_to_counter',
+        riskLevel: '낮음',
+      })
+      return
+    }
+    set({ caseType })
+  }
+
   const applyPreset = (id: string) => {
     const p = PRESETS.find((x) => x.id === id)
     if (!p) return
@@ -191,6 +212,9 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
         caseType: stamped.caseType,
         guidanceScope: stamped.guidanceScope,
         queueTicketType: stamped.queueTicketType,
+        counterReferral: stamped.counterReferral,
+        handlingCounter: stamped.handlingCounter,
+        visitStatus: stamped.visitStatus,
       }, store.settings.retentionDays)
       setLog(kept)
       setStep('edit')
@@ -251,6 +275,10 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
                   caseType: savedToast.caseType,
                   guidanceScope: savedToast.guidanceScope,
                   queueTicketType: savedToast.queueTicketType,
+                  counterReferral: savedToast.counterReferral,
+                  handlingCounter: savedToast.handlingCounter,
+                  visitStatus: savedToast.visitStatus,
+                  reservationRef: savedToast.reservationRef,
                   memo: savedToast.memo,
                   nonIdentifyingKeywords: savedToast.nonIdentifyingKeywords,
                 }, store.settings.retentionDays),
@@ -270,6 +298,9 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
                   caseType: savedToast.caseType,
                   guidanceScope: savedToast.guidanceScope,
                   queueTicketType: savedToast.queueTicketType,
+                  counterReferral: savedToast.counterReferral,
+                  handlingCounter: savedToast.handlingCounter,
+                  visitStatus: savedToast.visitStatus,
                 }, store.settings.retentionDays),
               )
               setSavedToast(null)
@@ -362,28 +393,103 @@ export function QuickLogForm({ initial, prefill, onClose }: Props) {
       )}
 
       <Field label="① 체류자격 *">
-        <ChipGroup options={VISA_STATUSES} value={log.visaStatus} onChange={(v) => set({ visaStatus: v })} />
+        <div className="space-y-2">
+          <ChipGroup options={COMMON_VISA_STATUSES} value={log.visaStatus} onChange={(v) => set({ visaStatus: v })} />
+          <details>
+            <summary className="cursor-pointer text-xs font-bold text-accent-strong">전체 체류자격 보기</summary>
+            <div className="mt-2">
+              <ChipGroup options={VISA_STATUSES} value={log.visaStatus} onChange={(v) => set({ visaStatus: v })} />
+            </div>
+          </details>
+          <DirectValueInput
+            placeholder="체류자격 직접 입력 예: G-1, D-10"
+            buttonLabel="체류자격 입력"
+            transform={(v) => v.toUpperCase()}
+            onSubmit={(visaStatus) => set({ visaStatus })}
+          />
+        </div>
       </Field>
 
       <Field label="② 국적 *">
-        <NationalityPicker value={log.nationality} onChange={(n) => set({ nationality: n })} />
+        <div className="space-y-2">
+          <NationalityPicker value={log.nationality} onChange={(n) => set({ nationality: n })} />
+          <NationalityDirectInput onSubmit={(nationality) => set({ nationality })} />
+        </div>
       </Field>
 
       <Field label="③ 민원유형 *">
-        <ChipGroup options={CASE_TYPES} value={log.caseType} onChange={(v) => set({ caseType: v })} />
+        <div className="space-y-2">
+          <ChipGroup options={CASE_TYPES} value={log.caseType} onChange={selectCaseType} />
+          <DirectValueInput
+            placeholder="민원유형 직접 입력 예: 보호 관련, 사증발급인정서"
+            buttonLabel="유형 입력"
+            maxLength={40}
+            onSubmit={(caseType) => set({ caseType })}
+          />
+        </div>
       </Field>
 
       <Field label="④ 안내범위 * (복수 선택)">
-        <MultiChipGroup options={GUIDANCE_SCOPES} values={log.guidanceScope} onToggle={toggleScope} />
+        <div className="space-y-2">
+          <MultiChipGroup options={GUIDANCE_SCOPES} values={log.guidanceScope} onToggle={toggleScope} />
+          <DirectValueInput
+            placeholder="안내범위 직접 입력 예: 번호표 없이 돌려보냄"
+            buttonLabel="안내 추가"
+            maxLength={48}
+            onSubmit={(scope) => toggleScope(scope)}
+          />
+        </div>
       </Field>
 
       <Field label="⑤ 번호표 부여 유형 *" hint="실제 순번은 저장하지 않습니다">
-        <ChipGroup
-          options={QUEUE_TICKET_TYPES.map((q) => q.value)}
-          value={log.queueTicketType}
-          onChange={(v) => set({ queueTicketType: v })}
-          render={(v) => queueLabel(v)}
+        <div className="space-y-2">
+          <ChipGroup
+            options={QUEUE_TICKET_TYPES.map((q) => q.value)}
+            value={log.queueTicketType}
+            onChange={(v) => set({ queueTicketType: v })}
+            render={(v) => queueLabel(v)}
+          />
+          <DirectValueInput
+            placeholder="번호표 유형 직접 입력 예: 체류, 국적, 사증"
+            buttonLabel="번호표 입력"
+            maxLength={32}
+            onSubmit={(queueTicketType) => set({ queueTicketType })}
+          />
+        </div>
+      </Field>
+
+      <Field label="⑥ 창구 안내" hint="대기 순번이 아니라 창구 번호/라벨만 기록">
+        <CounterReferralControl
+          value={log.counterReferral}
+          onChange={(counterReferral) => set({ counterReferral })}
         />
+      </Field>
+
+      <Field label="⑦ 현황/예약/응대" hint="예약번호 전체보다 뒤 4자리나 현장 별칭을 권장">
+        <div className="space-y-4">
+          <ChipGroup
+            options={VISIT_STATUSES.map((status) => status.value)}
+            value={log.visitStatus}
+            onChange={(visitStatus) => set({ visitStatus })}
+            render={visitStatusLabel}
+          />
+          <ReservationRefControl
+            value={log.reservationRef}
+            onChange={(reservationRef) => set({ reservationRef })}
+          />
+          <CounterReferralControl
+            value={log.handlingCounter}
+            onChange={(handlingCounter) => set({ handlingCounter })}
+            suggestions={COUNTER_SUGGESTIONS}
+            modeLabels={{
+              not_referred: '응대 미기재',
+              referred: '응대/부탁 기록',
+              unknown: '기억 안 남',
+            }}
+            placeholder="응대한 창구/담당자 예: 7, 한슬 반장"
+            buttonLabel="응대 입력"
+          />
+        </div>
       </Field>
 
       <hr className="border-gray-100" />

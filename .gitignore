@@ -26,3 +26,5 @@ pnpm-debug.log*
 # TS/Vite build artifacts
 *.tsbuildinfo
 vite.config.js
+.vercel
+.env*

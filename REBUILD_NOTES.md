@@ -1,4 +1,4 @@
-# REBUILD_NOTES — as_if_ios → DeskShield 재구축 기록
+# REBUILD_NOTES — as_if_ios → Desksht 재구축 기록
 
 ## 1. 기존 `as_if_ios`에서 제거한 항목
 
@@ -12,7 +12,7 @@
 - `.github/workflows/ios-build.yml` — iOS 빌드 워크플로
 - 기존 문서: `README.md`, `AGENTS.md`, `DESIGN_DIRECTION.md`, `PRODUCT_BRIEF.md`, `ROADMAP.md`
 
-## 2. 새로 구축한 DeskShield 구조
+## 2. 새로 구축한 Desksht 구조
 
 Vite + React + TypeScript + Tailwind CSS 기반 정적 SPA.
 
@@ -56,19 +56,28 @@ src/
 
 ## 4. 로컬 백업 절차
 
-작업 전 미커밋 변경사항은 없었고(working tree clean), 안전을 위해 현재 HEAD를 가리키는 로컬 백업
-브랜치를 만들었습니다.
+초기 MVP 재구축 당시 작업 전 미커밋 변경사항은 없었고(working tree clean), 안전을 위해 현재 HEAD를
+가리키는 로컬 백업 브랜치를 만들었습니다.
 
 ```
 backup/before-deskshield-rebuild-20260709-0559
 ```
 
-기존 iOS 앱으로 되돌리려면 이 브랜치를 체크아웃하면 됩니다. (원격으로 push하지 않았습니다.)
+2026-07-10 Desksht UX 개선 작업에서도 원격 push 없이 로컬 백업 브랜치를 만든 뒤 별도 작업
+브랜치에서 진행했습니다.
+
+```
+backup/before-desksht-ux-redesign-20260710-0930
+```
+
+기존 상태로 되돌리려면 해당 백업 브랜치를 체크아웃하면 됩니다. (원격으로 push하지 않았습니다.)
 
 ## 5. 작업 브랜치명
 
-- 지정 개발 브랜치: `claude/deskshield-mvp-rebuild-7x10j6` (이 브랜치에서 작업/커밋)
-- 백업 브랜치: `backup/before-deskshield-rebuild-20260709-0559`
+- 초기 MVP 재구축 브랜치: `claude/deskshield-mvp-rebuild-7x10j6`
+- 2026-07-10 UX 개선 브랜치: `redesign/desksht-adhd-command-center`
+- 초기 백업 브랜치: `backup/before-deskshield-rebuild-20260709-0559`
+- UX 개선 백업 브랜치: `backup/before-desksht-ux-redesign-20260710-0930`
 
 > 참고: 원래 지시서의 예시 브랜치명 `rebuild/deskshield-vercel-mvp` 대신, 이 세션에 지정된 개발 브랜치
 > `claude/deskshield-mvp-rebuild-7x10j6`를 사용했습니다(지정 브랜치 규칙 준수).
